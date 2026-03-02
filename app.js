@@ -8,10 +8,19 @@ const express = require("express");
 const parkingsRoutes = require("./routes/parkings");
 const errorHandler = require("./middleware/errorHandler");
 
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpecs = require("./swagger");
+
+
 const app = express();
 
 // Middlewares
 app.use(express.json());
+
+// Swagger UI
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
+
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
@@ -20,7 +29,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.get("/", (req, res) => {
-  res.send(" API");
+  res.send("Please chose a valid route");
 });
 
 app.use("/parkings", parkingsRoutes);
