@@ -79,3 +79,47 @@ exports.deleteParking = async (req, res, next) => {
     next(error);
   }
 };
+
+//PATCH modifications partielle 
+
+exports.updatePartialParking = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const updates = req.body;
+
+    // Champs autorisés
+    const allowedFields = ['name', 'city', 'type'];
+
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    // Boucle sur les champs
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        fields.push(`${field} = $${paramIndex}`);
+        values.push(updates[field]);
+        paramIndex++;
+      }
+    }
+
+    // Si aucun champ
+    if (fields.length === 0) {
+      return res.status(400).json({ message: "Aucun champ à modifier" });
+    }
+
+    values.push(id);
+
+    // Construis et exécute
+    const sql = `UPDATE parkings SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`;
+    const result = await con.query(sql, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Parking not found" });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+};

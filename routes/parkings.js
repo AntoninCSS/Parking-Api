@@ -243,4 +243,7 @@ router.put("/:id", parkingController.updateParking);
  */
 router.delete("/:id", parkingController.deleteParking);
 
+
+router.patch("/:id" , parkingController.updatePartialParking);
+
 module.exports = router;
