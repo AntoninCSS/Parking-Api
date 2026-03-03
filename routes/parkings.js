@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const parkingController = require("../controllers/parkingController");
+const { authenticate, requireRole } = require('../middleware/authMiddleware');
 
 /**
  * @swagger
@@ -36,7 +37,6 @@ const parkingController = require("../controllers/parkingController");
  *         description: "Erreur serveur"
  */
 router.get("/", parkingController.getAllParkings);
-
 /**
  * @swagger
  * /parkings/{id}:
@@ -77,7 +77,6 @@ router.get("/", parkingController.getAllParkings);
  *         description: "Erreur serveur"
  */
 router.get("/:parkingId", parkingController.getParkingById);
-
 /**
  * @swagger
  * /parkings:
@@ -133,8 +132,7 @@ router.get("/:parkingId", parkingController.getParkingById);
  *       500:
  *         description: "Erreur serveur"
  */
-router.post("/", parkingController.createParking);
-
+router.post("/", authenticate, parkingController.createParking);
 /**
  * @swagger
  * /parkings/{id}:
@@ -200,8 +198,80 @@ router.post("/", parkingController.createParking);
  *       500:
  *         description: "Erreur serveur"
  */
-router.put("/:parkingId", parkingController.updateParking);
-
+router.put("/:parkingId",authenticate,  parkingController.updateParking);
+/**
+ * @swagger
+ * /parkings/{parkingId}:
+ *   patch:
+ *     summary: "Mise à jour partielle d'un parking"
+ *     description: "Modifie un ou plusieurs champs d'un parking. Seuls les champs envoyés dans le body seront mis à jour."
+ *     tags:
+ *       - Parkings
+ *     parameters:
+ *       - in: path
+ *         name: parkingId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: "Identifiant du parking"
+ *         example: 4
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             minProperties: 1
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Parking Central"
+ *               city:
+ *                 type: string
+ *                 example: "Paris"
+ *               type:
+ *                 type: string
+ *                 enum: [indoor, outdoor]
+ *                 example: "indoor"
+ *           examples:
+ *             Modifier le nom uniquement:
+ *               value:
+ *                 name: "Nouveau Nom"
+ *             Modifier plusieurs champs:
+ *               value:
+ *                 name: "Parking Central"
+ *                 city: "Lyon"
+ *                 type: "outdoor"
+ *     responses:
+ *       200:
+ *         description: "Parking mis à jour avec succès"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Parking'
+ *             example:
+ *               id: 4
+ *               name: "Parking Central"
+ *               city: "Paris"
+ *               type: "indoor"
+ *               created_at: "2026-03-01T10:00:00Z"
+ *               updated_at: "2026-03-04T14:00:00Z"
+ *       400:
+ *         description: "Aucun champ à modifier"
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Aucun champ à modifier"
+ *       404:
+ *         description: "Parking non trouvé"
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Parking not found"
+ *       500:
+ *         description: "Erreur serveur"
+ */
+router.patch("/:parkingId" , authenticate,  parkingController.updatePartialParking)
 /**
  * @swagger
  * /parkings/{id}:
@@ -241,9 +311,6 @@ router.put("/:parkingId", parkingController.updateParking);
  *       500:
  *         description: "Erreur serveur"
  */
-router.delete("/:parkingId", parkingController.deleteParking);
-
-
-router.patch("/:parkingId" , parkingController.updatePartialParking);
+router.delete("/:parkingId",authenticate, requireRole('admin'), parkingController.deleteParking);
 
 module.exports = router;

@@ -94,7 +94,15 @@ exports.updateReservation = async (req, res, next) => {
 
     const result = await con.query(
       "UPDATE reservations SET parking_id = $1, client_name = $2, vehicle = $3, license_plate = $4, checkin = $5, checkout = $6, updated_at = NOW() WHERE id = $7 RETURNING *",
-      [parkingId, client_name, vehicle, license_plate, checkin, checkout, reservationId],
+      [
+        parkingId,
+        client_name,
+        vehicle,
+        license_plate,
+        checkin,
+        checkout,
+        reservationId,
+      ],
     );
     res.status(200).json(result.rows);
   } catch (error) {
@@ -105,7 +113,7 @@ exports.updateReservation = async (req, res, next) => {
 // DELETE supprimer
 exports.deleteReservation = async (req, res, next) => {
   try {
-     const { parkingId, reservationId } = req.params;
+    const { parkingId, reservationId } = req.params;
     const result = await con.query(
       "DELETE FROM reservations WHERE id = $1 AND parking_id = $2 RETURNING *",
       [reservationId, parkingId],
@@ -120,11 +128,12 @@ exports.deleteReservation = async (req, res, next) => {
     next(error);
   }
 };
+
 //PUT
 exports.updatePartialReservation = async (req, res, next) => {
   try {
     const parkingId = parseInt(req.params.parkingId); // ✅ corrigé
-    const reservationId = parseInt(req.params.reservationId);    // ✅ renommé
+    const reservationId = parseInt(req.params.reservationId); // ✅ renommé
     const updates = req.body;
 
     // Champs autorisés (parking_id retiré, il vient de l'URL)
@@ -153,7 +162,7 @@ exports.updatePartialReservation = async (req, res, next) => {
     }
 
     values.push(reservationId); // $paramIndex
-    values.push(parkingId);     // $paramIndex + 1
+    values.push(parkingId); // $paramIndex + 1
 
     const sql = `
       UPDATE reservations 

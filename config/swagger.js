@@ -5,7 +5,7 @@ const options = {
     openapi: "3.0.0",
     info: {
       title: "Parking API",
-      version: "1.0.0",
+      version: "1.1.2",
       description: "API pour gérer les parkings"
     },
     servers: [
