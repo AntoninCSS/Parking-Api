@@ -8,7 +8,11 @@ function convertToISO(dateString) {
 //Get
 exports.getAllreservation = async (req, res, next) => {
   try {
-    const result = await con.query("SELECT * FROM reservations");
+    const { parkingId } = req.params;
+    const result = await con.query(
+      "SELECT * FROM reservations where parking_id = $1",
+      [parkingId],
+    );
     res.status(200).json(result.rows);
   } catch (error) {
     next(error);
@@ -17,10 +21,12 @@ exports.getAllreservation = async (req, res, next) => {
 // Get by ID
 exports.getAllreservationById = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
-    const result = await con.query("SELECT * FROM reservations where id = $1", [
-      id,
-    ]);
+    const id = parseInt(req.params.reservationId);
+    const { parkingId } = req.params;
+    const result = await con.query(
+      "SELECT * FROM reservations where id = $1 AND parking_id = $2",
+      [id, parkingId],
+    );
     res.status(200).json(result.rows);
   } catch (error) {
     next(error);
@@ -30,8 +36,8 @@ exports.getAllreservationById = async (req, res, next) => {
 // POST créer
 exports.createReservation = async (req, res, next) => {
   try {
-    let { parking_id, client_name, vehicle, license_plate, checkin, checkout } =
-      req.body;
+    const { parkingId } = req.params;
+    let { client_name, vehicle, license_plate, checkin, checkout } = req.body;
     checkin = convertToISO(checkin);
     checkout = convertToISO(checkout);
     const checkinDate = new Date(checkin);
@@ -45,7 +51,7 @@ exports.createReservation = async (req, res, next) => {
 
     const result = await con.query(
       "INSERT INTO reservations (parking_id, client_name, vehicle, license_plate, checkin, checkout) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [parking_id, client_name, vehicle, license_plate, checkin, checkout],
+      [parkingId, client_name, vehicle, license_plate, checkin, checkout],
     );
     res.status(201).json(result.rows);
   } catch (error) {
@@ -57,9 +63,24 @@ exports.createReservation = async (req, res, next) => {
 
 exports.updateReservation = async (req, res, next) => {
   try {
-    let { parking_id, client_name, vehicle, license_plate, checkin, checkout } =
-      req.body;
-    const id = parseInt(req.params.id);
+    const requiredFields = [
+      "client_name",
+      "vehicle",
+      "license_plate",
+      "checkin",
+      "checkout",
+    ];
+    const missingFields = requiredFields.filter((field) => !req.body[field]);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Champs manquants : ${missingFields.join(", ")}`,
+      });
+    }
+    const { parkingId, reservationId } = req.params;
+
+    let { client_name, vehicle, license_plate, checkin, checkout } = req.body;
+
     checkin = convertToISO(checkin);
     checkout = convertToISO(checkout);
     const checkinDate = new Date(checkin);
@@ -73,7 +94,7 @@ exports.updateReservation = async (req, res, next) => {
 
     const result = await con.query(
       "UPDATE reservations SET parking_id = $1, client_name = $2, vehicle = $3, license_plate = $4, checkin = $5, checkout = $6, updated_at = NOW() WHERE id = $7 RETURNING *",
-      [parking_id, client_name, vehicle, license_plate, checkin, checkout, id],
+      [parkingId, client_name, vehicle, license_plate, checkin, checkout, reservationId],
     );
     res.status(200).json(result.rows);
   } catch (error) {
@@ -84,10 +105,10 @@ exports.updateReservation = async (req, res, next) => {
 // DELETE supprimer
 exports.deleteReservation = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
+     const { parkingId, reservationId } = req.params;
     const result = await con.query(
-      "DELETE FROM reservations WHERE id = $1 RETURNING *",
-      [id],
+      "DELETE FROM reservations WHERE id = $1 AND parking_id = $2 RETURNING *",
+      [reservationId, parkingId],
     );
 
     if (result.rows.length === 0) {
@@ -99,29 +120,26 @@ exports.deleteReservation = async (req, res, next) => {
     next(error);
   }
 };
-
-//PATCH Modification partielle
+//PUT
 exports.updatePartialReservation = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
+    const parkingId = parseInt(req.params.parkingId); // ✅ corrigé
+    const reservationId = parseInt(req.params.reservationId);    // ✅ renommé
     const updates = req.body;
 
-    /**
-     * {"parking_id" : 1 , "client_name" : "Super Nom"}
-     * 
-     * 
-     * 
-     * 
-     */
-
-    // Champs autorisés
-    const allowedFields = ["parking_id", "client_name", "vehicle","license_plate","checkin","checkout"]
+    // Champs autorisés (parking_id retiré, il vient de l'URL)
+    const allowedFields = [
+      "client_name",
+      "vehicle",
+      "license_plate",
+      "checkin",
+      "checkout",
+    ];
 
     const fields = [];
     const values = [];
     let paramIndex = 1;
 
-    // Boucle sur les champs
     for (const field of allowedFields) {
       if (updates[field] !== undefined) {
         fields.push(`${field} = $${paramIndex}`);
@@ -130,19 +148,24 @@ exports.updatePartialReservation = async (req, res, next) => {
       }
     }
 
-    // Si aucun champ
     if (fields.length === 0) {
       return res.status(400).json({ message: "Aucun champ à modifier" });
     }
 
-    values.push(id);
+    values.push(reservationId); // $paramIndex
+    values.push(parkingId);     // $paramIndex + 1
 
-    // Construis et exécute
-    const sql = `UPDATE reservations SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`;
+    const sql = `
+      UPDATE reservations 
+      SET ${fields.join(", ")}, updated_at = NOW() 
+      WHERE id = $${paramIndex} AND parking_id = $${paramIndex + 1}
+      RETURNING *
+    `;
+
     const result = await con.query(sql, values);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Parking not found" });
+      return res.status(404).json({ message: "Réservation non trouvée" });
     }
 
     res.status(200).json(result.rows[0]);

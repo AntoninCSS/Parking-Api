@@ -6,11 +6,12 @@
 require("dotenv").config();
 const express = require("express");
 const parkingsRoutes = require("./routes/parkings");
-const reservationsRoutes = require("./routes/reservation");
+const reservationRoutes = require("./routes/reservation");
+const authRoutes = require("./routes/authRoutes")
 const errorHandler = require("./middleware/errorHandler");
 
 const swaggerUi = require("swagger-ui-express");
-const swaggerSpecs = require("./swagger");
+const swaggerSpecs = require("./config/swagger");
 
 
 const app = express();
@@ -34,7 +35,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/parkings", parkingsRoutes);
-app.use("/reservations", reservationsRoutes);
+app.use('/parkings/:parkingId/reservations', reservationRoutes);
+app.use('/auth', authRoutes);
 
 
 // Gestion d'erreurs (./middleware/ParkingController.js)

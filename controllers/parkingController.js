@@ -13,7 +13,7 @@ exports.getAllParkings = async (req, res, next) => {
 //Get by ID
 exports.getParkingById = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.parkingId);
     const result = await con.query("SELECT * FROM parkings WHERE id = $1", [
       id,
     ]);
@@ -44,7 +44,7 @@ exports.createParking = async (req, res, next) => {
 // PUT modifier
 exports.updateParking = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.parkingId);
     const { name, city } = req.body;
     const result = await con.query(
       "UPDATE parkings SET name = $1, city = $2, updated_at = NOW() WHERE id = $3 RETURNING *",
@@ -64,7 +64,7 @@ exports.updateParking = async (req, res, next) => {
 // DELETE supprimer
 exports.deleteParking = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.parkingId);
     const result = await con.query(
       "DELETE FROM parkings WHERE id = $1 RETURNING *",
       [id],
@@ -84,7 +84,7 @@ exports.deleteParking = async (req, res, next) => {
 
 exports.updatePartialParking = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.parkingId);
     const updates = req.body;
 
     // Champs autorisés

@@ -76,7 +76,7 @@ router.get("/", parkingController.getAllParkings);
  *       500:
  *         description: "Erreur serveur"
  */
-router.get("/:id", parkingController.getParkingById);
+router.get("/:parkingId", parkingController.getParkingById);
 
 /**
  * @swagger
@@ -200,7 +200,7 @@ router.post("/", parkingController.createParking);
  *       500:
  *         description: "Erreur serveur"
  */
-router.put("/:id", parkingController.updateParking);
+router.put("/:parkingId", parkingController.updateParking);
 
 /**
  * @swagger
@@ -241,9 +241,9 @@ router.put("/:id", parkingController.updateParking);
  *       500:
  *         description: "Erreur serveur"
  */
-router.delete("/:id", parkingController.deleteParking);
+router.delete("/:parkingId", parkingController.deleteParking);
 
 
-router.patch("/:id" , parkingController.updatePartialParking);
+router.patch("/:parkingId" , parkingController.updatePartialParking);
 
 module.exports = router;
