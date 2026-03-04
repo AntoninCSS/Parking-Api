@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const con = require("../config/db.js");
+const { log } = require('../config/logger');
+
 
 exports.register = async (req, res, next) => {
   try {
@@ -19,6 +21,7 @@ exports.register = async (req, res, next) => {
       email,
     ]);
     if (existing.rows.length > 0) {
+      await log('warn', 'USER_REGISTER_FAILED', 'Email déjà utilisé', null, { email });
       return res.status(409).json({ message: "Email déjà utilisé" });
     }
     const salt = await bcrypt.genSalt(10);
@@ -28,14 +31,14 @@ exports.register = async (req, res, next) => {
       "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, role",
       [email, password_hash],
     );
-    const user = result.rows;
+    const user = result.rows[0];
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "2h" },
     );
-
+    await log('info', 'USER_REGISTER', 'Nouvel utilisateur créé', user.id, { email });
     res.status(201).json({ token, user: { id: user.id, email: user.email } });
   } catch (error) {
     next(error);
@@ -55,11 +58,13 @@ exports.login = async (req, res, next) => {
     );
 
     if (resutat.rows.length === 0) {
+      await log('warn', 'USER_LOGIN_FAILED', 'Identifiants invalides', null, { email });
       return res.status(409).json({ message: "Identifiants invalides" });
     }
     const user = resutat.rows[0];
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
+      await log('warn', 'USER_LOGIN_FAILED', 'Identifiants invalides', null, { email });
       return res.status(401).json({ message: "Identifiants invalides" });
     }
 
@@ -68,7 +73,7 @@ exports.login = async (req, res, next) => {
       process.env.JWT_SECRET,
       { expiresIn: "2h" },
     );
-
+    await log('info', 'USER_LOGIN', 'Connexion réussie', user.id, { email });
     res.status(200).json({ token, user: { id: user.id, email: user.email } });
   } catch (error) {
     next(error);

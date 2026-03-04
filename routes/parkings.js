@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const parkingController = require("../controllers/parkingController");
 const { authenticate, requireRole } = require('../middleware/authMiddleware');
+const { paginate } = require('../middleware/pagination');
 
 /**
  * @swagger
@@ -36,7 +37,7 @@ const { authenticate, requireRole } = require('../middleware/authMiddleware');
  *       500:
  *         description: "Erreur serveur"
  */
-router.get("/", parkingController.getAllParkings);
+router.get("/",paginate, parkingController.getAllParkings);
 /**
  * @swagger
  * /parkings/{id}:

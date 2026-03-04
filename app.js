@@ -5,10 +5,13 @@
 
 require("dotenv").config();
 const express = require("express");
+
 const parkingsRoutes = require("./routes/parkings");
 const reservationRoutes = require("./routes/reservation");
 const authRoutes = require("./routes/authRoutes")
 const errorHandler = require("./middleware/errorHandler");
+const morgan = require('morgan');
+const { winstonLogger } = require('./config/logger');
 
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./config/swagger");
@@ -22,12 +25,12 @@ app.use(express.json());
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
+//LOG avec Morgan (HTTP/CLI) & Winston (Log papier & BDD)
+app.use(morgan(':method :url :status :response-time ms', { 
+  stream : { 
+    write: (message) => winstonLogger.http(message.trim())
+  }}))
 
-
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
-});
 
 // Routes
 app.get("/", (req, res) => {

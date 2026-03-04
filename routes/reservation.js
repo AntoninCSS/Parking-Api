@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true }); 
 const reservationController = require("../controllers/reservationController");
+const { authenticate, requireRole } = require('../middleware/authMiddleware');
+const { paginate } = require('../middleware/pagination');
 
 /**
  * @swagger
@@ -69,7 +71,7 @@ const reservationController = require("../controllers/reservationController");
  *       500:
  *         description: "Erreur serveur"
  */
-router.get("/", reservationController.getAllreservation);
+router.get("/",paginate, reservationController.getAllreservation);
 
 /**
  * @swagger
@@ -151,7 +153,7 @@ router.get("/:reservationId", reservationController.getAllreservationById);
  *       500:
  *         description: "Erreur serveur"
  */
-router.post("/", reservationController.createReservation);
+router.post("/",authenticate, reservationController.createReservation);
 
 /**
  * @swagger
@@ -212,7 +214,7 @@ router.post("/", reservationController.createReservation);
  *       500:
  *         description: "Erreur serveur"
  */
-router.put("/:reservationId", reservationController.updateReservation);
+router.put("/:reservationId",authenticate, reservationController.updateReservation);
 
 /**
  * @swagger
@@ -267,7 +269,7 @@ router.put("/:reservationId", reservationController.updateReservation);
  *       500:
  *         description: "Erreur serveur"
  */
-router.patch("/:reservationId", reservationController.updatePartialReservation);
+router.patch("/:reservationId",authenticate, reservationController.updatePartialReservation);
 
 /**
  * @swagger
@@ -297,6 +299,6 @@ router.patch("/:reservationId", reservationController.updatePartialReservation);
  *       500:
  *         description: "Erreur serveur"
  */
-router.delete("/:reservationId", reservationController.deleteReservation);
+router.delete("/:reservationId", authenticate,requireRole('admin'),reservationController.deleteReservation);
 
 module.exports = router;
