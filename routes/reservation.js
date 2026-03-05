@@ -4,70 +4,77 @@ const reservationController = require("../controllers/reservationController");
 const { authenticate, requireRole } = require('../middleware/authMiddleware');
 const { paginate } = require('../middleware/pagination');
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Reservation:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *           example: 1
- *         parking_id:
- *           type: integer
- *           example: 3
- *         user_id:
- *           type: integer
- *           example: 7
- *         start_date:
- *           type: string
- *           format: date-time
- *           example: "2026-03-10T08:00:00Z"
- *         end_date:
- *           type: string
- *           format: date-time
- *           example: "2026-03-10T18:00:00Z"
- *         status:
- *           type: string
- *           enum: [pending, confirmed, cancelled]
- *           example: "confirmed"
- *         created_at:
- *           type: string
- *           format: date-time
- *           example: "2026-03-01T10:00:00Z"
- *         updated_at:
- *           type: string
- *           format: date-time
- *           example: "2026-03-01T10:00:00Z"
- */
+
 
 /**
  * @swagger
- * /reservations:
+ * /parkings/{parkingId}/reservations:
  *   get:
- *     summary: "Récupérer toutes les réservations"
- *     description: "Retourne la liste de toutes les réservations enregistrées"
+ *     summary: "Récupérer toutes les réservations d'un parking"
+ *     description: "Retourne la liste paginée des réservations d'un parking spécifique"
  *     tags:
  *       - Reservations
+ *     parameters:
+ *       - $ref: '#/components/parameters/parkingId'
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: "Numéro de la page"
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: "Nombre de résultats par page"
+ *         example: 10
  *     responses:
  *       200:
- *         description: "Liste de toutes les réservations"
+ *         description: "Liste paginée des réservations"
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Reservation'
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Reservation'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 200
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 20
  *             example:
- *               - id: 1
- *                 parking_id: 3
- *                 user_id: 7
- *                 start_date: "2026-03-10T08:00:00Z"
- *                 end_date: "2026-03-10T18:00:00Z"
- *                 status: "confirmed"
- *                 created_at: "2026-03-01T10:00:00Z"
- *                 updated_at: "2026-03-01T10:00:00Z"
+ *               data:
+ *                 - id: 1
+ *                   parking_id: 4
+ *                   client_name: "Jean Dupont"
+ *                   vehicle: "Voiture"
+ *                   license_plate: "AB-123-CD"
+ *                   checkin: "2026-03-10T08:00:00Z"
+ *                   checkout: "2026-03-10T18:00:00Z"
+ *                   created_at: "2026-03-01T10:00:00Z"
+ *                   updated_at: "2026-03-01T10:00:00Z"
+ *               pagination:
+ *                 total: 200
+ *                 page: 1
+ *                 limit: 10
+ *                 totalPages: 20
+ *       404:
+ *         description: "Parking non trouvé"
  *       500:
  *         description: "Erreur serveur"
  */

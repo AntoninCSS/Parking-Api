@@ -9,31 +9,70 @@ const { paginate } = require('../middleware/pagination');
  * /parkings:
  *   get:
  *     summary: "Récupérer tous les parkings"
- *     description: "Retourne une liste de tous les parkings enregistrés dans la base de données"
+ *     description: "Retourne une liste paginée de tous les parkings enregistrés dans la base de données"
  *     tags:
  *       - Parkings
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: "Numéro de la page"
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: "Nombre de résultats par page"
+ *         example: 10
  *     responses:
  *       200:
- *         description: "Liste de tous les parkings"
+ *         description: "Liste paginée des parkings"
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Parking'
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Parking'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 8
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 1
  *             example:
- *               - id: 1
- *                 name: "Parking A"
- *                 city: "Paris"
- *                 type: "outdoor"
- *                 created_at: "2026-03-01T10:00:00Z"
- *                 updated_at: "2026-03-01T10:00:00Z"
- *               - id: 2
- *                 name: "Parking B"
- *                 city: "Lyon"
- *                 type: "indoor"
- *                 created_at: "2026-03-01T11:00:00Z"
- *                 updated_at: "2026-03-01T11:00:00Z"
+ *               data:
+ *                 - id: 1
+ *                   name: "Parking A"
+ *                   city: "Paris"
+ *                   type: "outdoor"
+ *                   created_at: "2026-03-01T10:00:00Z"
+ *                   updated_at: "2026-03-01T10:00:00Z"
+ *                 - id: 2
+ *                   name: "Parking B"
+ *                   city: "Lyon"
+ *                   type: "indoor"
+ *                   created_at: "2026-03-01T11:00:00Z"
+ *                   updated_at: "2026-03-01T11:00:00Z"
+ *               pagination:
+ *                 total: 8
+ *                 page: 1
+ *                 limit: 10
+ *                 totalPages: 1
  *       500:
  *         description: "Erreur serveur"
  */

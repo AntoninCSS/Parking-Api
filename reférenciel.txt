@@ -1,5 +1,0 @@
-app.get('/users', ...)      // récupérer des données
-app.post('/users', ...)     // créer
-app.put('/users/:id', ...)  // modifier entièrement
-app.patch('/users/:id', ...) // modifier partiellement
-app.delete('/users/:id', ...) // supprimer
