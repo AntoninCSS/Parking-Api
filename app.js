@@ -10,6 +10,7 @@ const parkingsRoutes = require("./routes/parkings");
 const reservationRoutes = require("./routes/reservation");
 const authRoutes = require("./routes/auth")
 const errorHandler = require("./middleware/errorHandler");
+const { parkingIdParam, reservationIdParam } = require("./middleware/validate");
 const morgan = require('morgan');
 const { winstonLogger } = require('./config/logger');
 
@@ -31,6 +32,10 @@ app.use(morgan(':method :url :status :response-time ms', {
     write: (message) => winstonLogger.http(message.trim())
   }}))
 
+
+// Validation automatique des params d'URL sur toutes les routes
+app.param('parkingId', parkingIdParam);
+app.param('reservationId', reservationIdParam);
 
 // Routes
 app.get("/", (req, res) => {
