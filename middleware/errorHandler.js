@@ -1,8 +1,7 @@
 const { log } = require('../config/logger');
 
+// eslint-disable-next-line no-unused-vars
 const errorHandler = async (error, req, res, next) => {
-  console.error(error);
-
   const statusCode = error.statusCode || 500;
   const action = error.action || 'SERVER_ERROR';
 

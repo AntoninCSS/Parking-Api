@@ -8,7 +8,7 @@ const express = require("express");
 
 const parkingsRoutes = require("./routes/parkings");
 const reservationRoutes = require("./routes/reservation");
-const authRoutes = require("./routes/authRoutes")
+const authRoutes = require("./routes/auth")
 const errorHandler = require("./middleware/errorHandler");
 const morgan = require('morgan');
 const { winstonLogger } = require('./config/logger');

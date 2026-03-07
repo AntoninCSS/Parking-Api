@@ -4,6 +4,10 @@ const parkingController = require("../controllers/parkingController");
 const { authenticate, requireRole } = require('../middleware/authMiddleware');
 const { paginate } = require('../middleware/pagination');
 
+const { validate } = require('../middleware/validate');
+const { parkingSchema, parkingPartialSchema } = require('../schemas/parking.schema');
+
+
 /**
  * @swagger
  * /parkings:
@@ -118,6 +122,7 @@ router.get("/",paginate, parkingController.getAllParkings);
  */
 router.get("/:parkingId", parkingController.getParkingById);
 /**
+ * 
  * @swagger
  * /parkings:
  *   post:
@@ -149,6 +154,8 @@ router.get("/:parkingId", parkingController.getParkingById);
  *                 enum: ["outdoor", "indoor", "underground"]
  *                 description: "Type de parking"
  *                 example: "outdoor"
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       201:
  *         description: "Parking créé avec succès"
@@ -169,26 +176,26 @@ router.get("/:parkingId", parkingController.getParkingById);
  *           application/json:
  *             example:
  *               message: "Mauvaises données dans le body"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
  *       500:
  *         description: "Erreur serveur"
  */
-router.post("/", authenticate, parkingController.createParking);
+router.post("/", authenticate, validate(parkingSchema), parkingController.createParking);
 /**
  * @swagger
- * /parkings/{id}:
+ * /parkings/{parkingId}:
  *   put:
  *     summary: "Modifier un parking"
  *     description: "Modifie les informations d'un parking existant"
  *     tags:
  *       - Parkings
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "ID unique du parking"
- *         example: 1
+ *       - $ref: '#/components/parameters/parkingId'
  *     requestBody:
  *       required: true
  *       content:
@@ -229,6 +236,10 @@ router.post("/", authenticate, parkingController.createParking);
  *           application/json:
  *             example:
  *               message: "Mauvaises données dans le body"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
  *       404:
  *         description: "Parking non trouvé"
  *         content:
@@ -238,7 +249,7 @@ router.post("/", authenticate, parkingController.createParking);
  *       500:
  *         description: "Erreur serveur"
  */
-router.put("/:parkingId",authenticate,  parkingController.updateParking);
+router.put("/:parkingId",authenticate,validate(parkingSchema),  parkingController.updateParking);
 /**
  * @swagger
  * /parkings/{parkingId}:
@@ -247,14 +258,10 @@ router.put("/:parkingId",authenticate,  parkingController.updateParking);
  *     description: "Modifie un ou plusieurs champs d'un parking. Seuls les champs envoyés dans le body seront mis à jour."
  *     tags:
  *       - Parkings
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
- *       - in: path
- *         name: parkingId
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Identifiant du parking"
- *         example: 4
+ *       - $ref: '#/components/parameters/parkingId'
  *     requestBody:
  *       required: true
  *       content:
@@ -302,6 +309,10 @@ router.put("/:parkingId",authenticate,  parkingController.updateParking);
  *           application/json:
  *             example:
  *               message: "Aucun champ à modifier"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
  *       404:
  *         description: "Parking non trouvé"
  *         content:
@@ -311,23 +322,19 @@ router.put("/:parkingId",authenticate,  parkingController.updateParking);
  *       500:
  *         description: "Erreur serveur"
  */
-router.patch("/:parkingId" , authenticate,  parkingController.updatePartialParking)
+router.patch("/:parkingId" , authenticate,validate(parkingPartialSchema),  parkingController.updatePartialParking)
 /**
  * @swagger
- * /parkings/{id}:
+ * /parkings/{parkingId}:
  *   delete:
  *     summary: "Supprimer un parking"
- *     description: "Supprime un parking existant de la base de données"
+ *     description: "Supprime un parking existant de la base de données. Réservé aux administrateurs."
  *     tags:
  *       - Parkings
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "ID unique du parking"
- *         example: 1
+ *       - $ref: '#/components/parameters/parkingId'
  *     responses:
  *       200:
  *         description: "Parking supprimé avec succès"
@@ -342,6 +349,10 @@ router.patch("/:parkingId" , authenticate,  parkingController.updatePartialParki
  *               type: "outdoor"
  *               created_at: "2026-03-01T10:00:00Z"
  *               updated_at: "2026-03-01T10:00:00Z"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide, expiré ou rôle insuffisant (admin requis)"
  *       404:
  *         description: "Parking non trouvé"
  *         content:
