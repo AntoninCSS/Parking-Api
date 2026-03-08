@@ -1,5 +1,11 @@
 const con = require('../config/db.js');
 const { log } = require('../config/logger');
+const {
+  RESERVATION_NOT_FOUND,
+  RESERVATION_INVALID_DATES,
+  RESERVATION_MISSING_FIELDS,
+  NO_FIELD_TO_UPDATE,
+} = require('../constants/errors');
 
 function convertToISO(dateString) {
   const [day, month, year] = dateString.split('/');
@@ -37,7 +43,7 @@ exports.getReservationById = async (parkingId, reservationId) => {
 
   if (result.rows.length === 0) {
     await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', null, { parkingId, reservationId });
-    const error = new Error('Réservation introuvable');
+    const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
@@ -55,7 +61,7 @@ exports.createReservation = async (parkingId, body, userId) => {
 
   if (checkinDate > checkoutDate) {
     await log('warn', 'RESERVATION_INVALID_DATES', 'Date de check-in après check-out', userId, { parkingId, checkin, checkout });
-    const error = new Error('La date de check-in doit être avant la date de check-out');
+    const error = new Error(RESERVATION_INVALID_DATES);
     error.statusCode = 400;
     throw error;
   }
@@ -75,7 +81,7 @@ exports.updateReservation = async (parkingId, reservationId, body, userId) => {
 
   if (missingFields.length > 0) {
     await log('warn', 'RESERVATION_MISSING_FIELDS', 'Champs manquants', userId, { missingFields });
-    const error = new Error(`Champs manquants : ${missingFields.join(', ')}`);
+    const error = new Error(RESERVATION_MISSING_FIELDS(missingFields.join(', ')));
     error.statusCode = 400;
     throw error;
   }
@@ -86,7 +92,7 @@ exports.updateReservation = async (parkingId, reservationId, body, userId) => {
 
   if (new Date(checkin) > new Date(checkout)) {
     await log('warn', 'RESERVATION_INVALID_DATES', 'Date de check-in après check-out', userId, { parkingId, reservationId });
-    const error = new Error('La date de check-in doit être avant la date de check-out');
+    const error = new Error(RESERVATION_INVALID_DATES);
     error.statusCode = 400;
     throw error;
   }
@@ -98,7 +104,7 @@ exports.updateReservation = async (parkingId, reservationId, body, userId) => {
 
   if (result.rows.length === 0) {
     await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', userId, { parkingId, reservationId });
-    const error = new Error('Réservation introuvable');
+    const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
@@ -115,7 +121,7 @@ exports.deleteReservation = async (parkingId, reservationId, userId) => {
 
   if (result.rows.length === 0) {
     await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', null, { parkingId, reservationId });
-    const error = new Error('Réservation introuvable');
+    const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
@@ -140,7 +146,7 @@ exports.updatePartialReservation = async (parkingId, reservationId, updates, use
 
   if (fields.length === 0) {
     await log('warn', 'RESERVATION_NO_FIELDS', 'Aucun champ à modifier', userId);
-    const error = new Error('Aucun champ à modifier');
+    const error = new Error(NO_FIELD_TO_UPDATE);
     error.statusCode = 400;
     throw error;
   }
@@ -158,7 +164,7 @@ exports.updatePartialReservation = async (parkingId, reservationId, updates, use
 
   if (result.rows.length === 0) {
     await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', userId, { parkingId, reservationId });
-    const error = new Error('Réservation introuvable');
+    const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }

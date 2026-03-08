@@ -41,6 +41,43 @@ describe('GET /parkings', () => {
     expect(res.body.pagination.total).toBeDefined();
   });
 
+  test('✅ Pagination explicite page=1&limit=5', async () => {
+    const res = await request(app)
+      .get('/parkings?page=1&limit=5')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBeLessThanOrEqual(5);
+    expect(res.body.pagination.limit).toBe(5);
+  });
+
+  test('✅ XSS dans page → fallback page=1, retourne 200', async () => {
+    const res = await request(app)
+      .get('/parkings?page=<script>alert(1)</script>&limit=5')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.page).toBe(1);
+  });
+
+  test('✅ Injection SQL dans limit → fallback limit=10, retourne 200', async () => {
+    const res = await request(app)
+      .get('/parkings?page=1&limit=1 OR 1=1')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.limit).toBe(10);
+  });
+
+  test('✅ limit abusive → plafonnée à 100', async () => {
+    const res = await request(app)
+      .get('/parkings?page=1&limit=999999')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.limit).toBe(100);
+  });
+
 });
 
 // ─────────────────────────────────────────
@@ -93,6 +130,22 @@ describe('GET /parkings/:id', () => {
   test('❌ ID inexistant', async () => {
     const res = await request(app)
       .get('/parkings/999999')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('❌ ID avec XSS → 400', async () => {
+    const res = await request(app)
+      .get('/parkings/<script>alert(1)</script>')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('❌ ID avec injection SQL → 400', async () => {
+    const res = await request(app)
+      .get('/parkings/1 OR 1=1')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(404);

@@ -1,4 +1,5 @@
 const { log } = require('../config/logger');
+const { SERVER_ERROR } = require('../constants/errors');
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = async (error, req, res, next) => {
@@ -11,7 +12,7 @@ const errorHandler = async (error, req, res, next) => {
     statusCode,
   });
   res.status(statusCode).json({
-    message: error.message || "Erreur serveur",
+    message: error.message || SERVER_ERROR,
   });
 };
 

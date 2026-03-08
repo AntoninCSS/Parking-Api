@@ -4,6 +4,11 @@ jest.mock('../../config/logger');
 const jwt = require('jsonwebtoken');
 const { log } = require('../../config/logger');
 const { authenticate, requireRole } = require('../../middleware/authMiddleware');
+const {
+  AUTH_TOKEN_MISSING,
+  AUTH_TOKEN_INVALID,
+  AUTH_FORBIDDEN,
+} = require('../../constants/errors');
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -44,7 +49,7 @@ describe('authenticate', () => {
     await authenticate(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Token manquant' });
+    expect(res.json).toHaveBeenCalledWith({ message: AUTH_TOKEN_MISSING });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -64,7 +69,7 @@ describe('authenticate', () => {
     await authenticate(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Token invalide ou expiré' });
+    expect(res.json).toHaveBeenCalledWith({ message: AUTH_TOKEN_INVALID });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -88,7 +93,7 @@ describe('requireRole', () => {
     await requireRole('admin')(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Accès interdit' });
+    expect(res.json).toHaveBeenCalledWith({ message: AUTH_FORBIDDEN });
     expect(next).not.toHaveBeenCalled();
   });
 

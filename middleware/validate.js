@@ -1,5 +1,6 @@
 const { log } = require('../config/logger');
 const xss = require('xss');
+const { VALIDATION_FAILED, VALIDATION_INVALID_PARAM } = require('../constants/errors');
 
 // Sanitize récursif — protège contre XSS sur body ET params
 const sanitizeObject = (obj) => {
@@ -13,18 +14,15 @@ const sanitizeObject = (obj) => {
   return obj;
 };
 
-// app.param() handler — sanitize XSS + vérifie que c'est un entier positif
+// app.param() handler — vérifie que c'est un entier positif
+// Pas besoin de xss : une chaîne de chiffres purs ne peut pas contenir de XSS
 const createParamHandler = (paramName) => (req, res, next, value) => {
-  const sanitized = xss(String(value));
-  if (!/^\d+$/.test(sanitized)) {
-    return res.status(400).json({ message: `Paramètre invalide : ${paramName}` });
+  if (!/^\d+$/.test(String(value))) {
+    return res.status(400).json({ message: VALIDATION_INVALID_PARAM(paramName) });
   }
-  req.params[paramName] = Number(sanitized);
+  req.params[paramName] = Number(value);
   next();
 };
-
-const parkingIdParam = createParamHandler('parkingId');
-const reservationIdParam = createParamHandler('reservationId');
 
 // Validation + sanitize du body
 const validate = (schema) => async (req, res, next) => {
@@ -45,7 +43,7 @@ const validate = (schema) => async (req, res, next) => {
     return res.status(400).json({
       status: 'error',
       code: 400,
-      message: 'Validation échouée',
+      message: VALIDATION_FAILED,
       errors,
     });
   }
@@ -54,5 +52,9 @@ const validate = (schema) => async (req, res, next) => {
   next();
 };
 
+
+//Appel dans le app.js pour check les params 
+const parkingIdParam = createParamHandler('parkingId');
+const reservationIdParam = createParamHandler('reservationId');
 
 module.exports = { validate, parkingIdParam, reservationIdParam };

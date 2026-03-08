@@ -1,5 +1,10 @@
 const con = require('../config/db.js');
 const { log } = require('../config/logger');
+const {
+  PARKING_NOT_FOUND,
+  PARKING_NAME_CITY_REQUIRED,
+  NO_FIELD_TO_UPDATE,
+} = require('../constants/errors');
 
 exports.getAllParkings = async ({ page, limit, offset }) => {
   const total = await con.query('SELECT COUNT(*) FROM parkings');
@@ -26,7 +31,7 @@ exports.getParkingById = async (id) => {
 
   if (result.rows.length === 0) {
     await log('warn', 'PARKING_NOT_FOUND', 'Parking introuvable', null, { parkingId: id });
-    const error = new Error('Parking introuvable');
+    const error = new Error(PARKING_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
@@ -36,7 +41,7 @@ exports.getParkingById = async (id) => {
 
 exports.createParking = async (name, city, userId) => {
   if (!name || !city) {
-    const error = new Error('Nom et ville requis');
+    const error = new Error(PARKING_NAME_CITY_REQUIRED);
     error.statusCode = 400;
     throw error;
   }
@@ -52,7 +57,7 @@ exports.createParking = async (name, city, userId) => {
 
 exports.updateParking = async (id, name, city, userId) => {
   if (!name || !city) {
-    const error = new Error('Nom et ville requis');
+    const error = new Error(PARKING_NAME_CITY_REQUIRED);
     error.statusCode = 400;
     throw error;
   }
@@ -63,7 +68,7 @@ exports.updateParking = async (id, name, city, userId) => {
   );
 
   if (result.rows.length === 0) {
-    const error = new Error('Parking introuvable');
+    const error = new Error(PARKING_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
@@ -79,7 +84,7 @@ exports.deleteParking = async (id, userId) => {
   );
 
   if (result.rows.length === 0) {
-    const error = new Error('Parking introuvable');
+    const error = new Error(PARKING_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
@@ -103,7 +108,7 @@ exports.updatePartialParking = async (id, updates, userId) => {
   }
 
   if (fields.length === 0) {
-    const error = new Error('Aucun champ à modifier');
+    const error = new Error(NO_FIELD_TO_UPDATE);
     error.statusCode = 400;
     throw error;
   }
@@ -113,7 +118,7 @@ exports.updatePartialParking = async (id, updates, userId) => {
   const result = await con.query(sql, values);
 
   if (result.rows.length === 0) {
-    const error = new Error('Parking introuvable');
+    const error = new Error(PARKING_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }

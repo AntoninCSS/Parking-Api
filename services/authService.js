@@ -2,16 +2,22 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const con = require('../config/db.js');
 const { log } = require('../config/logger');
+const {
+  AUTH_CREDENTIALS_REQUIRED,
+  AUTH_PASSWORD_TOO_SHORT,
+  AUTH_EMAIL_ALREADY_USED,
+  AUTH_INVALID_CREDENTIALS,
+} = require('../constants/errors');
 
 exports.registerUser = async (email, password) => {
   // Validation
   if (!email || !password) {
-    const error = new Error('Email et mot de passe requis');
+    const error = new Error(AUTH_CREDENTIALS_REQUIRED);
     error.statusCode = 400;
     throw error;
   }
   if (password.length < 12) {
-    const error = new Error('Mot de passe trop court (12 caractères minimum)');
+    const error = new Error(AUTH_PASSWORD_TOO_SHORT);
     error.statusCode = 400;
     throw error;
   }
@@ -20,7 +26,7 @@ exports.registerUser = async (email, password) => {
   const existing = await con.query('SELECT id FROM users WHERE email = $1', [email]);
   if (existing.rows.length > 0) {
     await log('warn', 'USER_REGISTER_FAILED', 'Email déjà utilisé', null, { email });
-    const error = new Error('Email déjà utilisé');
+    const error = new Error(AUTH_EMAIL_ALREADY_USED);
     error.statusCode = 409;
     throw error;
   }
@@ -47,7 +53,7 @@ exports.registerUser = async (email, password) => {
 exports.loginUser = async (email, password) => {
   // Validation
   if (!email || !password) {
-    const error = new Error('Email et mot de passe requis');
+    const error = new Error(AUTH_CREDENTIALS_REQUIRED);
     error.statusCode = 400;
     throw error;
   }
@@ -56,7 +62,7 @@ exports.loginUser = async (email, password) => {
   const result = await con.query('SELECT * FROM users WHERE email = $1', [email]);
   if (result.rows.length === 0) {
     await log('warn', 'USER_LOGIN_FAILED', 'Identifiants invalides', null, { email });
-    const error = new Error('Identifiants invalides');
+    const error = new Error(AUTH_INVALID_CREDENTIALS);
     error.statusCode = 401;
     throw error;
   }
@@ -67,7 +73,7 @@ exports.loginUser = async (email, password) => {
   const isValid = await bcrypt.compare(password, user.password_hash);
   if (!isValid) {
     await log('warn', 'USER_LOGIN_FAILED', 'Identifiants invalides', null, { email });
-    const error = new Error('Identifiants invalides');
+    const error = new Error(AUTH_INVALID_CREDENTIALS);
     error.statusCode = 401;
     throw error;
   }
