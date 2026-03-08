@@ -5,7 +5,8 @@
 
 require("dotenv").config();
 const express = require("express");
-
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const parkingsRoutes = require("./routes/parkings");
 const reservationRoutes = require("./routes/reservation");
 const authRoutes = require("./routes/auth")
@@ -17,10 +18,22 @@ const { winstonLogger } = require('./config/logger');
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./config/swagger");
 
-
+app.use(helmet());
 const app = express();
 
-// Middlewares
+
+app.use(helmet());
+
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { status: 'error', message: 'Trop de tentatives, réessaie dans 15 minutes.' }
+});
+app.use('/auth', authLimiter);
+
+
+
 app.use(express.json());
 
 // Swagger UI
