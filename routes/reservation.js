@@ -4,6 +4,10 @@ const reservationController = require("../controllers/reservationController");
 const { authenticate, requireRole } = require('../middleware/authMiddleware');
 const { paginate } = require('../middleware/pagination');
 
+const { validate } = require('../middleware/validate');
+const { reservationSchema, reservationPartialSchema } = require('../schemas/reservations.schema');
+
+
 
 
 /**
@@ -60,12 +64,12 @@ const { paginate } = require('../middleware/pagination');
  *             example:
  *               data:
  *                 - id: 1
- *                   parking_id: 4
+ *                   parking_id: 1
  *                   client_name: "Jean Dupont"
  *                   vehicle: "Voiture"
  *                   license_plate: "AB-123-CD"
- *                   checkin: "2026-03-10T08:00:00Z"
- *                   checkout: "2026-03-10T18:00:00Z"
+ *                   checkin: "10/03/2026"
+ *                   checkout: "11/03/2026"
  *                   created_at: "2026-03-01T10:00:00Z"
  *                   updated_at: "2026-03-01T10:00:00Z"
  *               pagination:
@@ -82,20 +86,15 @@ router.get("/",paginate, reservationController.getAllreservation);
 
 /**
  * @swagger
- * /reservations/{id}:
+ * /parkings/{parkingId}/reservations/{reservationId}:
  *   get:
  *     summary: "Récupérer une réservation par ID"
  *     description: "Retourne une réservation spécifique selon son identifiant"
  *     tags:
  *       - Reservations
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Identifiant de la réservation"
- *         example: 1
+ *       - $ref: '#/components/parameters/parkingId'
+ *       - $ref: '#/components/parameters/reservationId'
  *     responses:
  *       200:
  *         description: "Réservation trouvée"
@@ -103,6 +102,16 @@ router.get("/",paginate, reservationController.getAllreservation);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Reservation'
+ *             example:
+ *               id: 1
+ *               parking_id: 1
+ *               client_name: "Jean Dupont"
+ *               vehicle: "Voiture"
+ *               license_plate: "AB-123-CD"
+ *               checkin: "10/03/2026"
+ *               checkout: "11/03/2026"
+ *               created_at: "2026-03-01T10:00:00Z"
+ *               updated_at: "2026-03-01T10:00:00Z"
  *       404:
  *         description: "Réservation non trouvée"
  *       500:
@@ -112,12 +121,16 @@ router.get("/:reservationId", reservationController.getAllreservationById);
 
 /**
  * @swagger
- * /reservations:
+ * /parkings/{parkingId}/reservations:
  *   post:
  *     summary: "Créer une nouvelle réservation"
- *     description: "Crée une réservation pour un parking donné"
+ *     description: "Crée une réservation pour un parking donné. Nécessite d'être authentifié."
  *     tags:
  *       - Reservations
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/parkingId'
  *     requestBody:
  *       required: true
  *       content:
@@ -125,29 +138,30 @@ router.get("/:reservationId", reservationController.getAllreservationById);
  *           schema:
  *             type: object
  *             required:
- *               - parking_id
- *               - user_id
- *               - start_date
- *               - end_date
+ *               - client_name
+ *               - vehicle
+ *               - license_plate
+ *               - checkin
+ *               - checkout
  *             properties:
- *               parking_id:
- *                 type: integer
- *                 example: 3
- *               user_id:
- *                 type: integer
- *                 example: 7
- *               start_date:
+ *               client_name:
  *                 type: string
- *                 format: date-time
- *                 example: "2026-03-10T08:00:00Z"
- *               end_date:
+ *                 minLength: 2
+ *                 example: "Jean Dupont"
+ *               vehicle:
  *                 type: string
- *                 format: date-time
- *                 example: "2026-03-10T18:00:00Z"
- *               status:
+ *                 example: "Voiture"
+ *               license_plate:
  *                 type: string
- *                 enum: [pending, confirmed, cancelled]
- *                 example: "pending"
+ *                 example: "AB-123-CD"
+ *               checkin:
+ *                 type: string
+ *                 example: "10/03/2026"
+ *                 description: "Format DD/MM/YYYY"
+ *               checkout:
+ *                 type: string
+ *                 example: "11/03/2026"
+ *                 description: "Format DD/MM/YYYY"
  *     responses:
  *       201:
  *         description: "Réservation créée avec succès"
@@ -157,27 +171,30 @@ router.get("/:reservationId", reservationController.getAllreservationById);
  *               $ref: '#/components/schemas/Reservation'
  *       400:
  *         description: "Données invalides"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
+ *       404:
+ *         description: "Parking non trouvé"
  *       500:
  *         description: "Erreur serveur"
  */
-router.post("/",authenticate, reservationController.createReservation);
+router.post("/",authenticate,validate(reservationSchema), reservationController.createReservation);
 
 /**
  * @swagger
- * /reservations/{id}:
+ * /parkings/{parkingId}/reservations/{reservationId}:
  *   put:
  *     summary: "Mettre à jour une réservation (complète)"
- *     description: "Remplace toutes les données d'une réservation existante"
+ *     description: "Remplace toutes les données d'une réservation existante. Nécessite d'être authentifié."
  *     tags:
  *       - Reservations
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Identifiant de la réservation"
- *         example: 1
+ *       - $ref: '#/components/parameters/parkingId'
+ *       - $ref: '#/components/parameters/reservationId'
  *     requestBody:
  *       required: true
  *       content:
@@ -185,30 +202,30 @@ router.post("/",authenticate, reservationController.createReservation);
  *           schema:
  *             type: object
  *             required:
- *               - parking_id
- *               - user_id
- *               - start_date
- *               - end_date
- *               - status
+ *               - client_name
+ *               - vehicle
+ *               - license_plate
+ *               - checkin
+ *               - checkout
  *             properties:
- *               parking_id:
- *                 type: integer
- *                 example: 3
- *               user_id:
- *                 type: integer
- *                 example: 7
- *               start_date:
+ *               client_name:
  *                 type: string
- *                 format: date-time
- *                 example: "2026-03-10T08:00:00Z"
- *               end_date:
+ *                 minLength: 2
+ *                 example: "Jean Dupont"
+ *               vehicle:
  *                 type: string
- *                 format: date-time
- *                 example: "2026-03-10T18:00:00Z"
- *               status:
+ *                 example: "Voiture"
+ *               license_plate:
  *                 type: string
- *                 enum: [pending, confirmed, cancelled]
- *                 example: "confirmed"
+ *                 example: "AB-123-CD"
+ *               checkin:
+ *                 type: string
+ *                 example: "10/03/2026"
+ *                 description: "Format DD/MM/YYYY"
+ *               checkout:
+ *                 type: string
+ *                 example: "11/03/2026"
+ *                 description: "Format DD/MM/YYYY"
  *     responses:
  *       200:
  *         description: "Réservation mise à jour"
@@ -216,54 +233,58 @@ router.post("/",authenticate, reservationController.createReservation);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Reservation'
+ *       400:
+ *         description: "Données invalides"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
  *       404:
  *         description: "Réservation non trouvée"
  *       500:
  *         description: "Erreur serveur"
  */
-router.put("/:reservationId",authenticate, reservationController.updateReservation);
+router.put("/:reservationId",authenticate,validate(reservationSchema), reservationController.updateReservation);
 
 /**
  * @swagger
- * /reservations/{id}:
+ * /parkings/{parkingId}/reservations/{reservationId}:
  *   patch:
  *     summary: "Mettre à jour une réservation (partielle)"
- *     description: "Modifie un ou plusieurs champs d'une réservation existante"
+ *     description: "Modifie un ou plusieurs champs d'une réservation existante. Nécessite d'être authentifié."
  *     tags:
  *       - Reservations
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Identifiant de la réservation"
- *         example: 1
+ *       - $ref: '#/components/parameters/parkingId'
+ *       - $ref: '#/components/parameters/reservationId'
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             minProperties: 1
  *             properties:
- *               parking_id:
- *                 type: integer
- *                 example: 3
- *               user_id:
- *                 type: integer
- *                 example: 7
- *               start_date:
+ *               client_name:
  *                 type: string
- *                 format: date-time
- *                 example: "2026-03-10T08:00:00Z"
- *               end_date:
+ *                 minLength: 2
+ *                 example: "Jean Dupont"
+ *               vehicle:
  *                 type: string
- *                 format: date-time
- *                 example: "2026-03-10T18:00:00Z"
- *               status:
+ *                 example: "Voiture"
+ *               license_plate:
  *                 type: string
- *                 enum: [pending, confirmed, cancelled]
- *                 example: "cancelled"
+ *                 example: "AB-123-CD"
+ *               checkin:
+ *                 type: string
+ *                 example: "10/03/2026"
+ *                 description: "Format DD/MM/YYYY"
+ *               checkout:
+ *                 type: string
+ *                 example: "11/03/2026"
+ *                 description: "Format DD/MM/YYYY"
  *     responses:
  *       200:
  *         description: "Réservation partiellement mise à jour"
@@ -271,29 +292,32 @@ router.put("/:reservationId",authenticate, reservationController.updateReservati
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Reservation'
+ *       400:
+ *         description: "Aucun champ à modifier"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
  *       404:
  *         description: "Réservation non trouvée"
  *       500:
  *         description: "Erreur serveur"
  */
-router.patch("/:reservationId",authenticate, reservationController.updatePartialReservation);
+router.patch("/:reservationId",authenticate,validate(reservationPartialSchema), reservationController.updatePartialReservation);
 
 /**
  * @swagger
- * /reservations/{id}:
+ * /parkings/{parkingId}/reservations/{reservationId}:
  *   delete:
  *     summary: "Supprimer une réservation"
- *     description: "Supprime définitivement une réservation selon son identifiant"
+ *     description: "Supprime définitivement une réservation. Réservé aux administrateurs."
  *     tags:
  *       - Reservations
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: "Identifiant de la réservation"
- *         example: 1
+ *       - $ref: '#/components/parameters/parkingId'
+ *       - $ref: '#/components/parameters/reservationId'
  *     responses:
  *       200:
  *         description: "Réservation supprimée avec succès"
@@ -301,6 +325,10 @@ router.patch("/:reservationId",authenticate, reservationController.updatePartial
  *           application/json:
  *             example:
  *               message: "Réservation supprimée avec succès"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide, expiré ou rôle insuffisant (admin requis)"
  *       404:
  *         description: "Réservation non trouvée"
  *       500:

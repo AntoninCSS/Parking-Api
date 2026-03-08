@@ -42,7 +42,7 @@ const logToDB = async (level, action, message, user_id = null, meta = {}) => {
     );
     console.log("log inséré ✅"); // ← et ça
   } catch (error) {
-    console.error("Erreur log BDD :", err.message); // ← et ça
+    console.error("Erreur log BDD :", error.message); // ← et ça
     winstonLogger.error("Erreur insertion log en BDD", {
       error: error.message,
     });
