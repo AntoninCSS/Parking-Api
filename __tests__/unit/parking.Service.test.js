@@ -1,7 +1,17 @@
-jest.mock('../../config/db');
+jest.mock('../../config/prisma', () => ({
+  parkings: {
+    findMany:   jest.fn(),
+    count:      jest.fn(),
+    findUnique: jest.fn(),
+    create:     jest.fn(),
+    update:     jest.fn(),
+    delete:     jest.fn(),
+  },
+  $transaction: jest.fn(),
+}));
 jest.mock('../../config/logger');
 
-const con = require('../../config/db');
+const prisma = require('../../config/prisma');
 const { log } = require('../../config/logger');
 const {
   getAllParkings,
@@ -13,7 +23,7 @@ const {
 } = require('../../services/parkingService');
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
   log.mockResolvedValue();
 });
 
@@ -23,8 +33,7 @@ const fakePark = { id: 1, name: 'Parking Jest', city: 'JestCity' };
 describe('getAllParkings', () => {
 
   test('✅ Retourne la liste paginée', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ count: '2' }] }); // COUNT
-    con.query.mockResolvedValueOnce({ rows: [fakePark] });        // SELECT
+    prisma.$transaction.mockResolvedValueOnce([[fakePark], 2]);
 
     const result = await getAllParkings({ page: 1, limit: 10, offset: 0 });
 
@@ -33,7 +42,7 @@ describe('getAllParkings', () => {
   });
 
   test('❌ Erreur BDD → throw', async () => {
-    con.query.mockRejectedValueOnce(new Error('DB crash'));
+    prisma.$transaction.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(getAllParkings({ page: 1, limit: 10, offset: 0 }))
       .rejects.toThrow('DB crash');
@@ -45,14 +54,14 @@ describe('getAllParkings', () => {
 describe('getParkingById', () => {
 
   test('✅ Retourne un parking', async () => {
-    con.query.mockResolvedValueOnce({ rows: [fakePark] });
+    prisma.parkings.findUnique.mockResolvedValueOnce(fakePark);
 
     const result = await getParkingById(1);
     expect(result).toEqual(fakePark);
   });
 
   test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+    prisma.parkings.findUnique.mockResolvedValueOnce(null);
 
     await expect(getParkingById(999))
       .rejects.toMatchObject({ statusCode: 404, message: 'Parking introuvable' });
@@ -64,7 +73,7 @@ describe('getParkingById', () => {
 describe('createParking', () => {
 
   test('✅ Crée un parking', async () => {
-    con.query.mockResolvedValueOnce({ rows: [fakePark] });
+    prisma.parkings.create.mockResolvedValueOnce(fakePark);
 
     const result = await createParking('Parking Jest', 'JestCity', 1);
     expect(result).toEqual(fakePark);
@@ -76,7 +85,7 @@ describe('createParking', () => {
   });
 
   test('❌ Erreur BDD → throw', async () => {
-    con.query.mockRejectedValueOnce(new Error('DB crash'));
+    prisma.parkings.create.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(createParking('Parking Jest', 'JestCity', 1))
       .rejects.toThrow('DB crash');
@@ -88,7 +97,7 @@ describe('createParking', () => {
 describe('updateParking', () => {
 
   test('✅ Met à jour un parking', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ ...fakePark, name: 'Modifié' }] });
+    prisma.parkings.update.mockResolvedValueOnce({ ...fakePark, name: 'Modifié' });
 
     const result = await updateParking(1, 'Modifié', 'JestCity', 1);
     expect(result.name).toBe('Modifié');
@@ -99,11 +108,13 @@ describe('updateParking', () => {
       .rejects.toMatchObject({ statusCode: 400 });
   });
 
-  test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+  test('❌ ID inexistant → propagate Prisma P2025', async () => {
+    const p2025 = new Error('Record not found');
+    p2025.code = 'P2025';
+    prisma.parkings.update.mockRejectedValueOnce(p2025);
 
     await expect(updateParking(999, 'Nom', 'Ville', 1))
-      .rejects.toMatchObject({ statusCode: 404 });
+      .rejects.toMatchObject({ code: 'P2025' });
   });
 
 });
@@ -112,17 +123,19 @@ describe('updateParking', () => {
 describe('deleteParking', () => {
 
   test('✅ Supprime un parking', async () => {
-    con.query.mockResolvedValueOnce({ rows: [fakePark] });
+    prisma.parkings.delete.mockResolvedValueOnce(fakePark);
 
     const result = await deleteParking(1, 1);
     expect(result).toEqual(fakePark);
   });
 
-  test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+  test('❌ ID inexistant → propagate Prisma P2025', async () => {
+    const p2025 = new Error('Record not found');
+    p2025.code = 'P2025';
+    prisma.parkings.delete.mockRejectedValueOnce(p2025);
 
     await expect(deleteParking(999, 1))
-      .rejects.toMatchObject({ statusCode: 404 });
+      .rejects.toMatchObject({ code: 'P2025' });
   });
 
 });
@@ -131,7 +144,7 @@ describe('deleteParking', () => {
 describe('updatePartialParking', () => {
 
   test('✅ Modification partielle', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ ...fakePark, name: 'Patch' }] });
+    prisma.parkings.update.mockResolvedValueOnce({ ...fakePark, name: 'Patch' });
 
     const result = await updatePartialParking(1, { name: 'Patch' }, 1);
     expect(result.name).toBe('Patch');
@@ -142,11 +155,11 @@ describe('updatePartialParking', () => {
       .rejects.toMatchObject({ statusCode: 400, message: 'Aucun champ à modifier' });
   });
 
-  test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+  test('❌ Erreur BDD → throw', async () => {
+    prisma.parkings.update.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(updatePartialParking(999, { name: 'Patch' }, 1))
-      .rejects.toMatchObject({ statusCode: 404 });
+      .rejects.toThrow('DB crash');
   });
 
 });

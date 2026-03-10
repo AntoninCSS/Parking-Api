@@ -1,7 +1,16 @@
-jest.mock('../../config/db');
+jest.mock('../../config/prisma', () => ({
+  reservations: {
+    count:     jest.fn(),
+    findMany:  jest.fn(),
+    findFirst: jest.fn(),
+    create:    jest.fn(),
+    update:    jest.fn(),
+    delete:    jest.fn(),
+  },
+}));
 jest.mock('../../config/logger');
 
-const con = require('../../config/db');
+const prisma = require('../../config/prisma');
 const { log } = require('../../config/logger');
 const {
   getAllReservations,
@@ -31,8 +40,8 @@ const fakeReservation = {
 describe('getAllReservations', () => {
 
   test('✅ Retourne la liste paginée', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ count: '3' }] }); // COUNT
-    con.query.mockResolvedValueOnce({ rows: [fakeReservation] }); // SELECT
+    prisma.reservations.count.mockResolvedValueOnce(3);
+    prisma.reservations.findMany.mockResolvedValueOnce([fakeReservation]);
 
     const result = await getAllReservations(10, { page: 1, limit: 10, offset: 0 });
 
@@ -42,7 +51,7 @@ describe('getAllReservations', () => {
   });
 
   test('❌ Erreur BDD → throw', async () => {
-    con.query.mockRejectedValueOnce(new Error('DB crash'));
+    prisma.reservations.count.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(getAllReservations(10, { page: 1, limit: 10, offset: 0 }))
       .rejects.toThrow('DB crash');
@@ -54,14 +63,14 @@ describe('getAllReservations', () => {
 describe('getReservationById', () => {
 
   test('✅ Retourne une réservation', async () => {
-    con.query.mockResolvedValueOnce({ rows: [fakeReservation] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(fakeReservation);
 
     const result = await getReservationById(10, 1);
     expect(result).toEqual([fakeReservation]);
   });
 
   test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(null);
 
     await expect(getReservationById(10, 999))
       .rejects.toMatchObject({ statusCode: 404, message: 'Réservation introuvable' });
@@ -81,7 +90,7 @@ describe('createReservation', () => {
   };
 
   test('✅ Crée une réservation', async () => {
-    con.query.mockResolvedValueOnce({ rows: [fakeReservation] });
+    prisma.reservations.create.mockResolvedValueOnce(fakeReservation);
 
     const result = await createReservation(10, validBody, 1);
     expect(result).toEqual([fakeReservation]);
@@ -95,7 +104,7 @@ describe('createReservation', () => {
   });
 
   test('❌ Erreur BDD → throw', async () => {
-    con.query.mockRejectedValueOnce(new Error('DB crash'));
+    prisma.reservations.create.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(createReservation(10, validBody, 1))
       .rejects.toThrow('DB crash');
@@ -115,7 +124,8 @@ describe('updateReservation', () => {
   };
 
   test('✅ Met à jour une réservation', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ ...fakeReservation, client_name: 'Jean Jest Modifié' }] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(fakeReservation);
+    prisma.reservations.update.mockResolvedValueOnce({ ...fakeReservation, client_name: 'Jean Jest Modifié' });
 
     const result = await updateReservation(10, 1, validBody, 1);
     expect(result[0].client_name).toBe('Jean Jest Modifié');
@@ -134,7 +144,7 @@ describe('updateReservation', () => {
   });
 
   test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(null);
 
     await expect(updateReservation(10, 999, validBody, 1))
       .rejects.toMatchObject({ statusCode: 404, message: 'Réservation introuvable' });
@@ -146,14 +156,15 @@ describe('updateReservation', () => {
 describe('deleteReservation', () => {
 
   test('✅ Supprime une réservation', async () => {
-    con.query.mockResolvedValueOnce({ rows: [fakeReservation] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(fakeReservation);
+    prisma.reservations.delete.mockResolvedValueOnce(fakeReservation);
 
     const result = await deleteReservation(10, 1, 1);
     expect(result).toEqual([fakeReservation]);
   });
 
   test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(null);
 
     await expect(deleteReservation(10, 999, 1))
       .rejects.toMatchObject({ statusCode: 404, message: 'Réservation introuvable' });
@@ -165,7 +176,8 @@ describe('deleteReservation', () => {
 describe('updatePartialReservation', () => {
 
   test('✅ Modification partielle (client_name)', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ ...fakeReservation, client_name: 'Patch Jest' }] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(fakeReservation);
+    prisma.reservations.update.mockResolvedValueOnce({ ...fakeReservation, client_name: 'Patch Jest' });
 
     const result = await updatePartialReservation(10, 1, { client_name: 'Patch Jest' }, 1);
     expect(result.client_name).toBe('Patch Jest');
@@ -177,14 +189,15 @@ describe('updatePartialReservation', () => {
   });
 
   test('❌ ID inexistant → statusCode 404', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+    prisma.reservations.findFirst.mockResolvedValueOnce(null);
 
     await expect(updatePartialReservation(10, 999, { client_name: 'Patch' }, 1))
       .rejects.toMatchObject({ statusCode: 404, message: 'Réservation introuvable' });
   });
 
   test('❌ Erreur BDD → throw', async () => {
-    con.query.mockRejectedValueOnce(new Error('DB crash'));
+    prisma.reservations.findFirst.mockResolvedValueOnce(fakeReservation);
+    prisma.reservations.update.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(updatePartialReservation(10, 1, { client_name: 'Patch' }, 1))
       .rejects.toThrow('DB crash');
