@@ -5,6 +5,6 @@ node_modules/
 *.log
 
 logs/
-ré
+coverage/
 
 /generated/prisma
