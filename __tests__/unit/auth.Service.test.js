@@ -1,11 +1,16 @@
 jest.mock('bcryptjs');
 jest.mock('jsonwebtoken');
-jest.mock('../../config/db');
+jest.mock('../../config/prisma', () => ({
+  users: {
+    findUnique: jest.fn(),
+    create:     jest.fn(),
+  },
+}));
 jest.mock('../../config/logger');
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const con = require('../../config/db');
+const prisma = require('../../config/prisma');
 const { log } = require('../../config/logger');
 const { registerUser, loginUser } = require('../../services/authService');
 
@@ -29,15 +34,15 @@ describe('registerUser', () => {
   });
 
   test('❌ Email déjà utilisé → statusCode 409', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
+    prisma.users.findUnique.mockResolvedValueOnce({ id: 1 });
 
     await expect(registerUser('existant@jest.com', 'monpassword123'))
       .rejects.toMatchObject({ statusCode: 409, message: 'Email déjà utilisé' });
   });
 
   test('✅ Inscription réussie → retourne token + user', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
-    con.query.mockResolvedValueOnce({ rows: [{ id: 1, email: 'test@jest.com', role: 'user' }] });
+    prisma.users.findUnique.mockResolvedValueOnce(null);
+    prisma.users.create.mockResolvedValueOnce({ id: 1, email: 'test@jest.com', role: 'user' });
     bcrypt.hash.mockResolvedValue('fakehashedpassword');
     jwt.sign.mockReturnValue('faketoken');
 
@@ -50,7 +55,7 @@ describe('registerUser', () => {
   });
 
   test('❌ Erreur BDD inattendue → throw', async () => {
-    con.query.mockRejectedValueOnce(new Error('DB crash'));
+    prisma.users.findUnique.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(registerUser('test@jest.com', 'monpassword123'))
       .rejects.toThrow('DB crash');
@@ -67,14 +72,14 @@ describe('loginUser', () => {
   });
 
   test('❌ Email inexistant → statusCode 401', async () => {
-    con.query.mockResolvedValueOnce({ rows: [] });
+    prisma.users.findUnique.mockResolvedValueOnce(null);
 
     await expect(loginUser('inexistant@jest.com', 'monpassword123'))
       .rejects.toMatchObject({ statusCode: 401, message: 'Identifiants invalides' });
   });
 
   test('❌ Mauvais mot de passe → statusCode 401', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ id: 1, email: 'test@jest.com', password_hash: 'hash', role: 'user' }] });
+    prisma.users.findUnique.mockResolvedValueOnce({ id: 1, email: 'test@jest.com', password_hash: 'hash', role: 'user' });
     bcrypt.compare.mockResolvedValue(false);
 
     await expect(loginUser('test@jest.com', 'mauvaispassword'))
@@ -82,7 +87,7 @@ describe('loginUser', () => {
   });
 
   test('✅ Connexion réussie → retourne token + user', async () => {
-    con.query.mockResolvedValueOnce({ rows: [{ id: 1, email: 'test@jest.com', password_hash: 'hash', role: 'user' }] });
+    prisma.users.findUnique.mockResolvedValueOnce({ id: 1, email: 'test@jest.com', password_hash: 'hash', role: 'user' });
     bcrypt.compare.mockResolvedValue(true);
     jwt.sign.mockReturnValue('faketoken');
 
@@ -95,7 +100,7 @@ describe('loginUser', () => {
   });
 
   test('❌ Erreur BDD inattendue → throw', async () => {
-    con.query.mockRejectedValueOnce(new Error('DB crash'));
+    prisma.users.findUnique.mockRejectedValueOnce(new Error('DB crash'));
 
     await expect(loginUser('test@jest.com', 'monpassword123'))
       .rejects.toThrow('DB crash');

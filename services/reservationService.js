@@ -1,4 +1,4 @@
-const con = require('../config/db.js');
+const prisma = require('../config/prisma.js');
 const { log } = require('../config/logger');
 const {
   RESERVATION_NOT_FOUND,
@@ -6,6 +6,26 @@ const {
   RESERVATION_MISSING_FIELDS,
   NO_FIELD_TO_UPDATE,
 } = require('../constants/errors');
+const {
+  LOG_RESERVATION_NOT_FOUND,
+  LOG_RESERVATION_INVALID_DATES,
+  LOG_RESERVATION_MISSING_FIELDS,
+  LOG_RESERVATION_NO_FIELDS,
+  LOG_RESERVATION_CREATED,
+  LOG_RESERVATION_UPDATED,
+  LOG_RESERVATION_DELETED,
+  LOG_RESERVATION_PARTIALLY_UPDATED,
+} = require('../constants/logs');
+
+const reservationSelect = {
+  id: true,
+  parking_id: true,
+  client_name: true,
+  vehicle: true,
+  license_plate: true,
+  checkin: true,
+  checkout: true,
+};
 
 function convertToISO(dateString) {
   const [day, month, year] = dateString.split('/');
@@ -13,19 +33,19 @@ function convertToISO(dateString) {
 }
 
 exports.getAllReservations = async (parkingId, { page, limit, offset }) => {
-  const total = await con.query(
-    'SELECT COUNT(*) FROM reservations WHERE parking_id = $1',
-    [parkingId]
-  );
-  const totalCount = parseInt(total.rows[0].count);
-
-  const result = await con.query(
-    'SELECT * FROM reservations WHERE parking_id = $1 ORDER BY id LIMIT $2 OFFSET $3',
-    [parkingId, limit, offset]
-  );
+  parkingId = parseInt(parkingId);
+  const [totalCount, rows] = await Promise.all([
+    prisma.reservations.count({ where: { parking_id: parkingId } }),
+    prisma.reservations.findMany({
+      where: { parking_id: parkingId },
+      orderBy: { id: 'asc' },
+      take: limit,
+      skip: offset,
+    }),
+  ]);
 
   return {
-    data: result.rows,
+    data: rows,
     pagination: {
       total: totalCount,
       page,
@@ -36,51 +56,62 @@ exports.getAllReservations = async (parkingId, { page, limit, offset }) => {
 };
 
 exports.getReservationById = async (parkingId, reservationId) => {
-  const result = await con.query(
-    'SELECT * FROM reservations WHERE id = $1 AND parking_id = $2',
-    [reservationId, parkingId]
-  );
+  parkingId = parseInt(parkingId);
+  reservationId = parseInt(reservationId);
 
-  if (result.rows.length === 0) {
-    await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', null, { parkingId, reservationId });
+  const reservation = await prisma.reservations.findFirst({
+    where: { id: reservationId, parking_id: parkingId },
+  });
+
+  if (!reservation) {
+    await log('warn', LOG_RESERVATION_NOT_FOUND.action, LOG_RESERVATION_NOT_FOUND.message, null, { parkingId, reservationId });
     const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
 
-  return result.rows;
+  return [reservation];
 };
 
 exports.createReservation = async (parkingId, body, userId) => {
+  parkingId = parseInt(parkingId);
+
   let { client_name, vehicle, license_plate, checkin, checkout } = body;
   checkin = convertToISO(checkin);
   checkout = convertToISO(checkout);
 
-  const checkinDate = new Date(checkin);
-  const checkoutDate = new Date(checkout);
-
-  if (checkinDate > checkoutDate) {
-    await log('warn', 'RESERVATION_INVALID_DATES', 'Date de check-in après check-out', userId, { parkingId, checkin, checkout });
+  if (new Date(checkin) > new Date(checkout)) {
+    await log('warn', LOG_RESERVATION_INVALID_DATES.action, LOG_RESERVATION_INVALID_DATES.message, userId, { parkingId, checkin, checkout });
     const error = new Error(RESERVATION_INVALID_DATES);
     error.statusCode = 400;
     throw error;
   }
 
-  const result = await con.query(
-    'INSERT INTO reservations (parking_id, client_name, vehicle, license_plate, checkin, checkout) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-    [parkingId, client_name, vehicle, license_plate, checkin, checkout]
-  );
+  const reservation = await prisma.reservations.create({
+    data: {
+      parking_id: parkingId,
+      client_name,
+      vehicle,
+      license_plate,
+      checkin: new Date(checkin),
+      checkout: new Date(checkout),
+    },
+    select: reservationSelect,
+  });
 
-  await log('info', 'RESERVATION_CREATED', 'Réservation créée', userId, { parkingId, reservationId: result.rows[0].id });
-  return result.rows;
+  await log('info', LOG_RESERVATION_CREATED.action, LOG_RESERVATION_CREATED.message, userId, { parkingId, reservationId: reservation.id });
+  return [reservation];
 };
 
 exports.updateReservation = async (parkingId, reservationId, body, userId) => {
+  parkingId = parseInt(parkingId);
+  reservationId = parseInt(reservationId);
+
   const requiredFields = ['client_name', 'vehicle', 'license_plate', 'checkin', 'checkout'];
   const missingFields = requiredFields.filter((field) => !body[field]);
 
   if (missingFields.length > 0) {
-    await log('warn', 'RESERVATION_MISSING_FIELDS', 'Champs manquants', userId, { missingFields });
+    await log('warn', LOG_RESERVATION_MISSING_FIELDS.action, LOG_RESERVATION_MISSING_FIELDS.message, userId, { missingFields });
     const error = new Error(RESERVATION_MISSING_FIELDS(missingFields.join(', ')));
     error.statusCode = 400;
     throw error;
@@ -91,84 +122,99 @@ exports.updateReservation = async (parkingId, reservationId, body, userId) => {
   checkout = convertToISO(checkout);
 
   if (new Date(checkin) > new Date(checkout)) {
-    await log('warn', 'RESERVATION_INVALID_DATES', 'Date de check-in après check-out', userId, { parkingId, reservationId });
+    await log('warn', LOG_RESERVATION_INVALID_DATES.action, LOG_RESERVATION_INVALID_DATES.message, userId, { parkingId, reservationId });
     const error = new Error(RESERVATION_INVALID_DATES);
     error.statusCode = 400;
     throw error;
   }
 
-  const result = await con.query(
-    'UPDATE reservations SET parking_id = $1, client_name = $2, vehicle = $3, license_plate = $4, checkin = $5, checkout = $6, updated_at = NOW() WHERE id = $7 RETURNING *',
-    [parkingId, client_name, vehicle, license_plate, checkin, checkout, reservationId]
-  );
+  const existing = await prisma.reservations.findFirst({
+    where: { id: reservationId, parking_id: parkingId },
+  });
 
-  if (result.rows.length === 0) {
-    await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', userId, { parkingId, reservationId });
+  if (!existing) {
+    await log('warn', LOG_RESERVATION_NOT_FOUND.action, LOG_RESERVATION_NOT_FOUND.message, userId, { parkingId, reservationId });
     const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
 
-  await log('info', 'RESERVATION_UPDATED', 'Réservation mise à jour', userId, { parkingId, reservationId: result.rows[0].id });
-  return result.rows;
+  const reservation = await prisma.reservations.update({
+    where: { id: reservationId },
+    data: {
+      parking_id: parkingId,
+      client_name,
+      vehicle,
+      license_plate,
+      checkin: new Date(checkin),
+      checkout: new Date(checkout),
+      updated_at: new Date(),
+    },
+  });
+
+  await log('info', LOG_RESERVATION_UPDATED.action, LOG_RESERVATION_UPDATED.message, userId, { parkingId, reservationId: reservation.id });
+  return [reservation];
 };
 
 exports.deleteReservation = async (parkingId, reservationId, userId) => {
-  const result = await con.query(
-    'DELETE FROM reservations WHERE id = $1 AND parking_id = $2 RETURNING *',
-    [reservationId, parkingId]
-  );
+  parkingId = parseInt(parkingId);
+  reservationId = parseInt(reservationId);
 
-  if (result.rows.length === 0) {
-    await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', null, { parkingId, reservationId });
+  const existing = await prisma.reservations.findFirst({
+    where: { id: reservationId, parking_id: parkingId },
+  });
+
+  if (!existing) {
+    await log('warn', LOG_RESERVATION_NOT_FOUND.action, LOG_RESERVATION_NOT_FOUND.message, null, { parkingId, reservationId });
     const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
 
-  await log('info', 'RESERVATION_DELETED', 'Réservation supprimée', userId, { parkingId, reservationId });
-  return result.rows;
+  await prisma.reservations.delete({ where: { id: reservationId } });
+
+  await log('info', LOG_RESERVATION_DELETED.action, LOG_RESERVATION_DELETED.message, userId, { parkingId, reservationId });
+  return [existing];
 };
 
 exports.updatePartialReservation = async (parkingId, reservationId, updates, userId) => {
+  parkingId = parseInt(parkingId);
+  reservationId = parseInt(reservationId);
+
   const allowedFields = ['client_name', 'vehicle', 'license_plate', 'checkin', 'checkout'];
-  const fields = [];
-  const values = [];
-  let paramIndex = 1;
+  const data = {};
 
   for (const field of allowedFields) {
     if (updates[field] !== undefined) {
-      fields.push(`${field} = $${paramIndex}`);
-      values.push(updates[field]);
-      paramIndex++;
+      data[field] = (field === 'checkin' || field === 'checkout')
+        ? new Date(convertToISO(updates[field]))
+        : updates[field];
     }
   }
 
-  if (fields.length === 0) {
-    await log('warn', 'RESERVATION_NO_FIELDS', 'Aucun champ à modifier', userId);
+  if (Object.keys(data).length === 0) {
+    await log('warn', LOG_RESERVATION_NO_FIELDS.action, LOG_RESERVATION_NO_FIELDS.message, userId);
     const error = new Error(NO_FIELD_TO_UPDATE);
     error.statusCode = 400;
     throw error;
   }
 
-  values.push(reservationId);
-  values.push(parkingId);
+  const existing = await prisma.reservations.findFirst({
+    where: { id: reservationId, parking_id: parkingId },
+  });
 
-  const sql = `
-    UPDATE reservations
-    SET ${fields.join(', ')}, updated_at = NOW()
-    WHERE id = $${paramIndex} AND parking_id = $${paramIndex + 1}
-    RETURNING *
-  `;
-  const result = await con.query(sql, values);
-
-  if (result.rows.length === 0) {
-    await log('warn', 'RESERVATION_NOT_FOUND', 'Réservation introuvable', userId, { parkingId, reservationId });
+  if (!existing) {
+    await log('warn', LOG_RESERVATION_NOT_FOUND.action, LOG_RESERVATION_NOT_FOUND.message, userId, { parkingId, reservationId });
     const error = new Error(RESERVATION_NOT_FOUND);
     error.statusCode = 404;
     throw error;
   }
 
-  await log('info', 'RESERVATION_PARTIALLY_UPDATED', 'Réservation partiellement mise à jour', userId, { parkingId, reservationId: result.rows[0].id });
-  return result.rows[0];
+  const reservation = await prisma.reservations.update({
+    where: { id: reservationId },
+    data: { ...data, updated_at: new Date() },
+  });
+
+  await log('info', LOG_RESERVATION_PARTIALLY_UPDATED.action, LOG_RESERVATION_PARTIALLY_UPDATED.message, userId, { parkingId, reservationId: reservation.id });
+  return reservation;
 };

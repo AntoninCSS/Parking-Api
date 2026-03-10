@@ -35,7 +35,7 @@ beforeAll(async () => {
 
   // Crée un parking de test
   const parkingRes = await con.query(
-    "INSERT INTO parkings (name, city) VALUES ('Parking Jest', 'JestCity') RETURNING id"
+    "INSERT INTO parkings (name, city) VALUES ('Parking Jest', 'JestCityReservation') RETURNING id"
   );
   testParkingId = parkingRes.rows[0].id;
 });
