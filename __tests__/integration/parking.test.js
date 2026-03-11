@@ -1,30 +1,40 @@
 const request = require('supertest');
 const app = require('../../app');
-const con = require('../../config/db');
+const prisma = require('../../config/prisma');
 const bcrypt = require('bcryptjs');
-
 let token;
 let createdParkingId;
 
 beforeAll(async () => {
-  // Nettoie et crée un admin directement en base
-  await con.query("DELETE FROM users WHERE email = 'admin@jest.com'");
-  const hash = await bcrypt.hash('monpassword123', 10);
-  await con.query(
-    "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')",
-    ['admin@jest.com', hash]
-  );
+  // 1. Supprime d'abord les refresh_tokens liés à ce user
+  const existing = await prisma.users.findUnique({ 
+    where: { email: 'admin@jest.com' } 
+  });
+  if (existing) {
+    await prisma.refresh_tokens.deleteMany({ where: { user_id: existing.id } });
+  }
 
+  // 2. Puis supprime le user
+  await prisma.users.deleteMany({ where: { email: 'admin@jest.com' } });
+
+  // 3. Recrée le user admin
+  const hash = await bcrypt.hash('monpassword123', 10);
+  await prisma.users.create({
+    data: { email: 'admin@jest.com', password_hash: hash, role: 'admin' },
+  });
+
+  // 4. Login
   const res = await request(app)
     .post('/auth/login')
     .send({ email: 'admin@jest.com', password: 'monpassword123' });
   token = res.body.token;
 });
-
 afterAll(async () => {
-  await con.query("DELETE FROM parkings WHERE city = 'JestCity'");
-  await con.query("DELETE FROM users WHERE email = 'admin@jest.com'");
-  // pas de con.end() → géré par --forceExit
+  await prisma.refresh_tokens.deleteMany({
+    where: { user: { email: 'admin@jest.com' } }
+  });
+  await prisma.parkings.deleteMany({ where: { city: 'JestCity' } });
+  await prisma.users.deleteMany({ where: { email: 'admin@jest.com' } });
 });
 
 // ─────────────────────────────────────────

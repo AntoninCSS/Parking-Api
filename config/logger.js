@@ -1,6 +1,5 @@
 const winston = require("winston");
-const con = require("./db.js");
-
+const prisma = require("./prisma");  
 const winstonLogger = winston.createLogger({
   level: "http",
   transports: [
@@ -34,15 +33,19 @@ const winstonLogger = winston.createLogger({
   ],
 });
 
+
 const logToDB = async (level, action, message, user_id = null, meta = {}) => {
   try {
-    await con.query(
-      "INSERT INTO logs (level, action, message, user_id, meta) VALUES ($1, $2, $3, $4, $5)",
-      [level, action, message, user_id, JSON.stringify(meta)],
-    );
-    console.log("log inséré ✅"); // ← et ça
+    await prisma.logs.create({          // ← remplace con.query
+      data: {
+        level,
+        action,
+        message,
+        user_id,
+        meta,                           // Prisma gère le JSON natif, pas besoin de JSON.stringify
+      },
+    });
   } catch (error) {
-    console.error("Erreur log BDD :", error.message); // ← et ça
     winstonLogger.error("Erreur insertion log en BDD", {
       error: error.message,
     });

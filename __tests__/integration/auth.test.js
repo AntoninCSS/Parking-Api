@@ -1,9 +1,21 @@
+// Désactive le rate limiter pour éviter les 429 lors des tests d'intégration.
+// rateLimiter.test.js teste le vrai comportement avec jest.resetModules().
+jest.mock("express-rate-limit", () => () => (req, res, next) => next());
+
 const request = require("supertest");
 const app = require("../../app");
-const con = require("../../config/db");
+const prisma = require("../../config/prisma");
+
+const { cleanDB, disconnectDB } = require('../helpers/setupPrisma');
 
 beforeAll(async () => {
-  await con.query("DELETE FROM users WHERE email = 'test@jest.com'");
+  await prisma.users.deleteMany({ where: { email: "test@jest.com" } });
+});
+
+beforeEach(async () => await cleanDB());
+afterAll(async () => {
+  await prisma.users.deleteMany({ where: { email: "test@jest.com" } });
+  await disconnectDB();
 });
 
 describe("POST /auth/register", () => {
@@ -39,6 +51,11 @@ describe("POST /auth/register", () => {
   });
 
   test("❌ Email déjà utilisé", async () => {
+    // register une 1ère fois
+    await request(app)
+      .post("/auth/register")
+      .send({ email: "test@jest.com", password: "monpassword123" });
+
     // register une 2ème fois avec le même email
     const response = await request(app)
       .post("/auth/register")
@@ -65,6 +82,13 @@ describe("POST /auth/register", () => {
 });
 
 describe("POST /auth/login", () => {
+  beforeEach(async () => {
+    await request(app).post("/auth/register").send({
+      email: "test@jest.com",
+      password: "monpassword123",
+    });
+  });
+
   test("✅ Connexion réussie", async () => {
     const response = await request(app).post("/auth/login").send({
       email: "test@jest.com",
@@ -103,6 +127,73 @@ describe("POST /auth/login", () => {
   });
 });
 
-afterAll(async () => {
-  await con.query("DELETE FROM users WHERE email = 'test@jest.com'");
+describe("POST /auth/refresh", () => {
+  let refreshCookie;
+  beforeEach(async () => {
+    await request(app).post("/auth/register").send({
+      email: "test@jest.com",
+      password: "monpassword123",
+    });
+    const res = await request(app).post("/auth/login").send({
+      email: "test@jest.com",
+      password: "monpassword123",
+    });
+
+    if (res.status !== 200) throw new Error(`Login échoué avec status ${res.status}`);
+    const setCookie = res.headers["set-cookie"] ?? [];
+    refreshCookie = setCookie.find((c) => c.startsWith("refreshToken="));
+    if (!refreshCookie) throw new Error("Cookie refreshToken absent de la réponse");
+  });
+
+  test("✅ Rafraîchissement réussi → retourne un nouveau token", async () => {
+    const res = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", refreshCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeDefined();
+  });
+
+  test("✅ Nouveau token JWT valide (format header.payload.signature)", async () => {
+    const res = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", refreshCookie);
+
+    expect(res.status).toBe(200);
+    const parts = res.body.token.split(".");
+    expect(parts).toHaveLength(3);
+  });
+
+  test("❌ Sans cookie → 401 Refresh token manquant", async () => {
+    const res = await request(app).post("/auth/refresh");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe("Refresh token manquant");
+  });
+
+  test("❌ Cookie avec token JWT invalide → 401 Refresh token invalide ou expiré", async () => {
+    const res = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", "refreshToken=cecinestpasuntoken");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe("Refresh token invalide ou expiré");
+  });
+
+  test("❌ Cookie avec token JWT valide mais révoqué → 401", async () => {
+    // Créer un JWT syntaxiquement valide mais absent de la BDD
+    const jwt = require("jsonwebtoken");
+    const fakeToken = jwt.sign(
+      { userId: 999 },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" },
+    );
+
+    const res = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", `refreshToken=${fakeToken}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe("Refresh token révoqué");
+  });
 });

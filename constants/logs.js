@@ -3,6 +3,10 @@ const LOG_USER_REGISTER        = { action: 'USER_REGISTER',        message: 'Nou
 const LOG_USER_REGISTER_FAILED = { action: 'USER_REGISTER_FAILED', message: 'Email déjà utilisé' };
 const LOG_USER_LOGIN           = { action: 'USER_LOGIN',           message: 'Connexion réussie' };
 const LOG_USER_LOGIN_FAILED    = { action: 'USER_LOGIN_FAILED',    message: 'Identifiants invalides' };
+const LOG_USER_REFRESH         = { action: 'token_refresh', message: 'Access token renouvelé' };
+const LOG_USER_LOGOUT          = { action: 'logout',        message: 'Utilisateur déconnecté' };
+
+
 
 // ─── Parking ──────────────────────────────────────────────────────────────────
 const LOG_PARKING_CREATED           = { action: 'PARKING_CREATED',           message: 'Parking créé' };
@@ -37,4 +41,6 @@ module.exports = {
   LOG_RESERVATION_UPDATED,
   LOG_RESERVATION_DELETED,
   LOG_RESERVATION_PARTIALLY_UPDATED,
+  LOG_USER_REFRESH,
+  LOG_USER_LOGOUT,
 };

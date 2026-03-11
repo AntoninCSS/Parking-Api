@@ -1,49 +1,49 @@
 const request = require('supertest');
 const app = require('../../app');
-const con = require('../../config/db');
+const prisma = require('../../config/prisma');
 const bcrypt = require('bcryptjs');
-
 let userToken;
 let adminToken;
 let testParkingId;
 let createdReservationId;
 
+
 beforeAll(async () => {
   // Crée un user standard
-  await con.query("DELETE FROM users WHERE email = 'user@jest.com'");
+  await prisma.users.deleteMany({ where: { email: 'user@jest.com' } });
   const userHash = await bcrypt.hash('monpassword123', 10);
-  await con.query(
-    "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'user')",
-    ['user@jest.com', userHash]
-  );
+  await prisma.users.create({
+    data: { email: 'user@jest.com', password_hash: userHash, role: 'user' },
+  });
   const userRes = await request(app)
     .post('/auth/login')
     .send({ email: 'user@jest.com', password: 'monpassword123' });
   userToken = userRes.body.token;
 
   // Crée un admin
-  await con.query("DELETE FROM users WHERE email = 'admin@jest.com'");
+  await prisma.users.deleteMany({ where: { email: 'admin@jest.com' } });
   const adminHash = await bcrypt.hash('monpassword123', 10);
-  await con.query(
-    "INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')",
-    ['admin@jest.com', adminHash]
-  );
+  await prisma.users.create({
+    data: { email: 'admin@jest.com', password_hash: adminHash, role: 'admin' },
+  });
   const adminRes = await request(app)
     .post('/auth/login')
     .send({ email: 'admin@jest.com', password: 'monpassword123' });
   adminToken = adminRes.body.token;
 
   // Crée un parking de test
-  const parkingRes = await con.query(
-    "INSERT INTO parkings (name, city) VALUES ('Parking Jest', 'JestCityReservation') RETURNING id"
-  );
-  testParkingId = parkingRes.rows[0].id;
+  const parking = await prisma.parkings.create({
+    data: { name: 'Parking Jest', city: 'JestCityReservation' },
+  });
+  testParkingId = parking.id;
 });
 
 afterAll(async () => {
-  await con.query("DELETE FROM reservations WHERE parking_id = $1", [testParkingId]);
-  await con.query("DELETE FROM parkings WHERE id = $1", [testParkingId]);
-  await con.query("DELETE FROM users WHERE email IN ('user@jest.com', 'admin@jest.com')");
+  // La suppression du parking cascade sur les réservations (onDelete: Cascade)
+  await prisma.parkings.deleteMany({ where: { id: testParkingId } });
+  await prisma.users.deleteMany({
+    where: { email: { in: ['user@jest.com', 'admin@jest.com'] } },
+  });
 });
 
 // ─────────────────────────────────────────

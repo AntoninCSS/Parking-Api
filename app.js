@@ -20,10 +20,12 @@ const { winstonLogger } = require("./config/logger");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./config/swagger");
 
-const app = express();
-
 
 const isDev = process.env.NODE_ENV === 'development';
+const cookieParser = require('cookie-parser');
+
+const app = express();
+
 
 //Condifuguration de Helmet : en dev on utilise la config par défaut (pas de HSTS), en prod on utilise la config durcie
 app.use(
@@ -32,7 +34,7 @@ app.use(
     : helmetConfig // Config de prod 
 );
 
-
+app.use(cookieParser());
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,

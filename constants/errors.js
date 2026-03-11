@@ -24,6 +24,10 @@ const RESERVATION_MISSING_FIELDS  = (fields) => `Champs manquants : ${fields}`;
 const NO_FIELD_TO_UPDATE          = 'Aucun champ à modifier';
 const SERVER_ERROR                = 'Erreur serveur';
 
+const AUTH_REFRESH_TOKEN_MISSING  = 'Refresh token manquant';
+const AUTH_REFRESH_TOKEN_INVALID  = 'Refresh token invalide ou expiré';
+const AUTH_REFRESH_TOKEN_REVOKED  = 'Refresh token révoqué';
+
 module.exports = {
   AUTH_TOKEN_MISSING,
   AUTH_TOKEN_INVALID,
@@ -35,6 +39,9 @@ module.exports = {
   VALIDATION_FAILED,
   VALIDATION_INVALID_PARAM,
   PARKING_NOT_FOUND,
+  AUTH_REFRESH_TOKEN_INVALID,
+  AUTH_REFRESH_TOKEN_MISSING,
+  AUTH_REFRESH_TOKEN_REVOKED,
   PARKING_NAME_CITY_REQUIRED,
   RESERVATION_NOT_FOUND,
   RESERVATION_INVALID_DATES,
