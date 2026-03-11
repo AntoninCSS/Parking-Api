@@ -5,6 +5,8 @@
 
 require("dotenv").config();
 const express = require("express");
+
+const { helmetConfig } = require("./middleware/security");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const parkingsRoutes = require("./routes/parkings");
@@ -19,7 +21,17 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./config/swagger");
 
 const app = express();
-app.use(helmet());
+
+
+const isDev = process.env.NODE_ENV === 'development';
+
+//Condifuguration de Helmet : en dev on utilise la config par défaut (pas de HSTS), en prod on utilise la config durcie
+app.use(
+  isDev
+    ? helmet() // Config par défaut en dev, pas de HSTS
+    : helmetConfig // Config de prod 
+);
+
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
