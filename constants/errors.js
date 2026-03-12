@@ -27,9 +27,11 @@ const SERVER_ERROR                = 'Erreur serveur';
 const AUTH_REFRESH_TOKEN_MISSING  = 'Refresh token manquant';
 const AUTH_REFRESH_TOKEN_INVALID  = 'Refresh token invalide ou expiré';
 const AUTH_REFRESH_TOKEN_REVOKED  = 'Refresh token révoqué';
+const TIMEOUT_ERROR               = 'Request timeout';
 
 module.exports = {
   AUTH_TOKEN_MISSING,
+  TIMEOUT_ERROR,
   AUTH_TOKEN_INVALID,
   AUTH_FORBIDDEN,
   AUTH_CREDENTIALS_REQUIRED,
