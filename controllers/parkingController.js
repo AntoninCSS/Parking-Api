@@ -21,8 +21,8 @@ exports.getParkingById = async (req, res, next) => {
 
 exports.createParking = async (req, res, next) => {
   try {
-    const { name, city } = req.body;
-    const result = await parkingService.createParking(name, city, req.user?.userId);
+    const { name, city, capacity } = req.body; 
+    const result = await parkingService.createParking(name, city, capacity, req.user?.userId);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -32,8 +32,8 @@ exports.createParking = async (req, res, next) => {
 exports.updateParking = async (req, res, next) => {
   try {
     const id = parseInt(req.params.parkingId);
-    const { name, city } = req.body;
-    const result = await parkingService.updateParking(id, name, city, req.user?.userId);
+    const { name, city, capacity } = req.body;
+    const result = await parkingService.updateParking(id, name, city, capacity, req.user?.userId);
     res.status(200).json(result);
   } catch (error) {
     next(error);

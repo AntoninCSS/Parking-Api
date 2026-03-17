@@ -45,29 +45,21 @@ exports.getParkingById = async (id) => {
   return parking;
 };
 
-exports.createParking = async (name, city, userId) => {
+exports.createParking = async (name, city, capacity, userId) => {
   if (!name || !city) {
     const error = new Error(PARKING_NAME_CITY_REQUIRED);
     error.statusCode = 400;
     throw error;
   }
   const parking = await prisma.parkings.create({
-    data: { name, city },
+    data: { name, city, capacity },
   });
 
-  await log(
-    "info",
-    LOG_PARKING_CREATED.action,
-    LOG_PARKING_CREATED.message,
-    userId,
-    {
-      parkingId: parking.id,
-    },
-  );
+  await log('info', LOG_PARKING_CREATED.action, LOG_PARKING_CREATED.message, userId, { parkingId: parking.id });
   return parking;
 };
 
-exports.updateParking = async (id, name, city, userId) => {
+exports.updateParking = async (id, name, city, capacity, userId) => {
   if (!name || !city) {
     const error = new Error(PARKING_NAME_CITY_REQUIRED);
     error.statusCode = 400;
@@ -76,18 +68,10 @@ exports.updateParking = async (id, name, city, userId) => {
 
   const parking = await prisma.parkings.update({
     where: { id: parseInt(id) },
-    data: { name, city },
+    data: { name, city, capacity },
   });
 
-  await log(
-    "info",
-    LOG_PARKING_UPDATED.action,
-    LOG_PARKING_UPDATED.message,
-    userId,
-    {
-      parkingId: parking.id,
-    },
-  );
+  await log('info', LOG_PARKING_UPDATED.action, LOG_PARKING_UPDATED.message, userId, { parkingId: parking.id });
   return parking;
 };
 
@@ -109,7 +93,7 @@ exports.deleteParking = async (id, userId) => {
 };
 
 exports.updatePartialParking = async (id, updates, userId) => {
-  const allowedFields = ["name", "city"];
+  const allowedFields = ["name", "city", "capacity"];
   const data = {};
 
   for (const field of allowedFields) {
@@ -140,4 +124,34 @@ exports.updatePartialParking = async (id, updates, userId) => {
   );
 
   return parking;
+};
+
+exports.checkAvailability = async (parkingId, checkin, checkout) => {
+  const parking = await prisma.parkings.findUnique({
+    where: { id: parseInt(parkingId) },
+  });
+
+  if (!parking) {
+    const error = new Error(PARKING_NOT_FOUND);
+    error.statusCode = 404;
+    throw error;
+  }
+  // Compte les réservations qui se chevauchent avec la période demandée
+  // retourne place disponible - overlappingCount
+  const overlappingCount = await prisma.reservations.count({
+    where: {
+      parking_id: parseInt(parkingId),
+      AND: [
+        { checkin:  { lt: new Date(checkout) } },
+        { checkout: { gt: new Date(checkin) } },
+      ],
+    },
+  });
+
+  return {
+    capacity:        parking.capacity,
+    occupiedSpots:   overlappingCount,
+    availableSpots:  parking.capacity - overlappingCount,
+    isAvailable:     overlappingCount < parking.capacity,
+  };
 };

@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm i:*)"
+      "Bash(npm i:*)",
+      "Bash(npx jest:*)",
+      "Bash(npm test:*)",
+      "Read(//home/user/.nvm/versions/**)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/**)",
+      "Read(//home/user/**)"
     ]
   }
 }

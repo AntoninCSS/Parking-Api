@@ -1,3 +1,6 @@
+jest.mock('../../services/parkingService', () => ({
+  checkAvailability: jest.fn(),
+}));
 jest.mock('../../config/prisma', () => ({
   reservations: {
     count:     jest.fn(),
@@ -12,6 +15,7 @@ jest.mock('../../config/logger');
 
 const prisma = require('../../config/prisma');
 const { log } = require('../../config/logger');
+const parkingService = require('../../services/parkingService');
 const {
   getAllReservations,
   getReservationById,
@@ -24,6 +28,13 @@ const {
 beforeEach(() => {
   jest.clearAllMocks();
   log.mockResolvedValue();
+  // Par défaut : parking disponible pour tous les tests createReservation
+  parkingService.checkAvailability.mockResolvedValue({
+    isAvailable:    true,
+    availableSpots: 5,
+    occupiedSpots:  0,
+    capacity:       5,
+  });
 });
 
 const fakeReservation = {
@@ -89,11 +100,12 @@ describe('createReservation', () => {
     checkout: '12/06/2026',
   };
 
-  test('✅ Crée une réservation', async () => {
+  test('✅ Crée une réservation (parking disponible)', async () => {
     prisma.reservations.create.mockResolvedValueOnce(fakeReservation);
 
     const result = await createReservation(10, validBody, 1);
     expect(result).toEqual([fakeReservation]);
+    expect(parkingService.checkAvailability).toHaveBeenCalledTimes(1);
   });
 
   test('❌ Check-in après check-out → statusCode 400', async () => {
@@ -101,6 +113,18 @@ describe('createReservation', () => {
 
     await expect(createReservation(10, body, 1))
       .rejects.toMatchObject({ statusCode: 400, message: 'La date de check-in doit être avant la date de check-out' });
+  });
+
+  test('❌ Parking complet pour ces dates → statusCode 409', async () => {
+    parkingService.checkAvailability.mockResolvedValueOnce({
+      isAvailable:    false,
+      availableSpots: 0,
+      occupiedSpots:  1,
+      capacity:       1,
+    });
+
+    await expect(createReservation(10, validBody, 1))
+      .rejects.toMatchObject({ statusCode: 409, message: 'Parking complet pour ces dates' });
   });
 
   test('❌ Erreur BDD → throw', async () => {

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 let userToken;
 let adminToken;
 let testParkingId;
+let fullParkingId;
 let createdReservationId;
 
 
@@ -31,16 +32,22 @@ beforeAll(async () => {
     .send({ email: 'admin@jest.com', password: 'monpassword123' });
   adminToken = adminRes.body.token;
 
-  // Crée un parking de test
+  // Parking principal pour les tests généraux (capacity=1 par défaut)
   const parking = await prisma.parkings.create({
-    data: { name: 'Parking Jest', city: 'JestCityReservation' },
+    data: { name: 'Parking Jest', city: 'JestCityReservation', capacity: 1 },
   });
   testParkingId = parking.id;
+
+  // Parking dédié aux tests de chevauchement (capacity=1)
+  const fullParking = await prisma.parkings.create({
+    data: { name: 'Parking Complet Jest', city: 'JestCityReservation', capacity: 1 },
+  });
+  fullParkingId = fullParking.id;
 });
 
 afterAll(async () => {
   // La suppression du parking cascade sur les réservations (onDelete: Cascade)
-  await prisma.parkings.deleteMany({ where: { id: testParkingId } });
+  await prisma.parkings.deleteMany({ where: { city: 'JestCityReservation' } });
   await prisma.users.deleteMany({
     where: { email: { in: ['user@jest.com', 'admin@jest.com'] } },
   });
@@ -112,6 +119,50 @@ describe('POST /parkings/:id/reservations', () => {
     expect(res.body[0].client_name).toBe('Jean Jest');
 
     createdReservationId = res.body[0].id;
+  });
+
+  test('❌ Parking complet (chevauchement de dates) → 409', async () => {
+    // Remplit d'abord fullParkingId (capacity=1)
+    await request(app)
+      .post(`/parkings/${fullParkingId}/reservations`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        client_name: 'Premier Client',
+        vehicle: 'Voiture',
+        license_plate: 'AA-000-AA',
+        checkin: '15/06/2026',
+        checkout: '18/06/2026',
+      });
+
+    // Tente une deuxième réservation avec des dates qui se chevauchent
+    const res = await request(app)
+      .post(`/parkings/${fullParkingId}/reservations`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        client_name: 'Second Client',
+        vehicle: 'Moto',
+        license_plate: 'BB-111-BB',
+        checkin: '16/06/2026',
+        checkout: '19/06/2026',
+      });
+
+    expect(res.status).toBe(409);
+  });
+
+  test('✅ Réservation sans chevauchement (dates différentes) → 201', async () => {
+    // Même parking fullParkingId, mais dates qui ne se chevauchent pas
+    const res = await request(app)
+      .post(`/parkings/${fullParkingId}/reservations`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        client_name: 'Troisième Client',
+        vehicle: 'Camion',
+        license_plate: 'CC-222-CC',
+        checkin: '20/06/2026',
+        checkout: '22/06/2026',
+      });
+
+    expect(res.status).toBe(201);
   });
 
   test('❌ Sans token', async () => {

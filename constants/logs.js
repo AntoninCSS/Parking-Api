@@ -13,6 +13,7 @@ const LOG_PARKING_CREATED           = { action: 'PARKING_CREATED',           mes
 const LOG_PARKING_UPDATED           = { action: 'PARKING_UPDATED',           message: 'Parking modifié' };
 const LOG_PARKING_DELETED           = { action: 'PARKING_DELETED',           message: 'Parking supprimé' };
 const LOG_PARKING_PARTIALLY_UPDATED = { action: 'PARKING_PARTIALLY_UPDATED', message: 'Parking partiellement modifié' };
+const LOG_PARKING_FULL = { action: 'PARKING_FULL', message: 'Parking complet pour ces dates' };
 
 // ─── Reservation ──────────────────────────────────────────────────────────────
 const LOG_RESERVATION_NOT_FOUND          = { action: 'RESERVATION_NOT_FOUND',          message: 'Réservation introuvable' };
@@ -28,6 +29,7 @@ module.exports = {
   LOG_USER_REGISTER,
   LOG_USER_REGISTER_FAILED,
   LOG_USER_LOGIN,
+  LOG_PARKING_FULL,
   LOG_USER_LOGIN_FAILED,
   LOG_PARKING_CREATED,
   LOG_PARKING_UPDATED,

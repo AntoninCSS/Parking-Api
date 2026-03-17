@@ -7,8 +7,8 @@ let createdParkingId;
 
 beforeAll(async () => {
   // 1. Supprime d'abord les refresh_tokens liés à ce user
-  const existing = await prisma.users.findUnique({ 
-    where: { email: 'admin@jest.com' } 
+  const existing = await prisma.users.findUnique({
+    where: { email: 'admin@jest.com' }
   });
   if (existing) {
     await prisma.refresh_tokens.deleteMany({ where: { user_id: existing.id } });
@@ -93,24 +93,34 @@ describe('GET /parkings', () => {
 // ─────────────────────────────────────────
 describe('POST /parkings', () => {
 
-  test('✅ Crée un parking', async () => {
+  test('✅ Crée un parking avec capacité', async () => {
     const res = await request(app)
       .post('/parkings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Parking Jest', city: 'JestCity' });
+      .send({ name: 'Parking Jest', city: 'JestCity', capacity: 10 });
 
     expect(res.status).toBe(201);
     expect(res.body.id).toBeDefined();
     expect(res.body.name).toBe('Parking Jest');
+    expect(res.body.capacity).toBe(10);
 
     createdParkingId = res.body.id;
   });
 
-  test('❌ Champs manquants', async () => {
+  test('❌ Champs manquants (sans capacity)', async () => {
     const res = await request(app)
       .post('/parkings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Sans ville' });
+      .send({ name: 'Sans ville ni capacité' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('❌ capacity invalide (inférieure à 1)', async () => {
+    const res = await request(app)
+      .post('/parkings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Parking Jest', city: 'JestCity', capacity: 0 });
 
     expect(res.status).toBe(400);
   });
@@ -118,7 +128,7 @@ describe('POST /parkings', () => {
   test('❌ Sans token', async () => {
     const res = await request(app)
       .post('/parkings')
-      .send({ name: 'Parking Jest', city: 'JestCity' });
+      .send({ name: 'Parking Jest', city: 'JestCity', capacity: 5 });
 
     expect(res.status).toBe(401);
   });
@@ -135,6 +145,7 @@ describe('GET /parkings/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(createdParkingId);
+    expect(res.body.capacity).toBeDefined();
   });
 
   test('❌ ID inexistant', async () => {
@@ -166,21 +177,22 @@ describe('GET /parkings/:id', () => {
 // ─────────────────────────────────────────
 describe('PUT /parkings/:id', () => {
 
-  test('✅ Met à jour un parking', async () => {
+  test('✅ Met à jour un parking (avec capacity)', async () => {
     const res = await request(app)
       .put(`/parkings/${createdParkingId}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Parking Jest Modifié', city: 'JestCity' });
+      .send({ name: 'Parking Jest Modifié', city: 'JestCity', capacity: 20 });
 
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('Parking Jest Modifié');
+    expect(res.body.capacity).toBe(20);
   });
 
   test('❌ ID inexistant', async () => {
     const res = await request(app)
       .put('/parkings/999999')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'X', city: 'X' });
+      .send({ name: 'X', city: 'X', capacity: 1 });
 
     expect(res.status).toBe(404);
   });
@@ -198,6 +210,16 @@ describe('PATCH /parkings/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('Patch Jest');
+  });
+
+  test('✅ Modification partielle (capacity uniquement)', async () => {
+    const res = await request(app)
+      .patch(`/parkings/${createdParkingId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ capacity: 15 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.capacity).toBe(15);
   });
 
   test('❌ Aucun champ valide envoyé', async () => {

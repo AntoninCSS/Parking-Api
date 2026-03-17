@@ -1,33 +1,37 @@
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-const AUTH_TOKEN_MISSING          = 'Token manquant';
-const AUTH_TOKEN_INVALID          = 'Token invalide ou expiré';
-const AUTH_FORBIDDEN              = 'Accès interdit';
-const AUTH_CREDENTIALS_REQUIRED   = 'Email et mot de passe requis';
-const AUTH_PASSWORD_TOO_SHORT     = 'Mot de passe trop court (12 caractères minimum)';
-const AUTH_EMAIL_ALREADY_USED     = 'Email déjà utilisé';
-const AUTH_INVALID_CREDENTIALS    = 'Identifiants invalides';
+const AUTH_TOKEN_MISSING = "Token manquant";
+const AUTH_TOKEN_INVALID = "Token invalide ou expiré";
+const AUTH_FORBIDDEN = "Accès interdit";
+const AUTH_CREDENTIALS_REQUIRED = "Email et mot de passe requis";
+const AUTH_PASSWORD_TOO_SHORT =
+  "Mot de passe trop court (12 caractères minimum)";
+const AUTH_EMAIL_ALREADY_USED = "Email déjà utilisé";
+const AUTH_INVALID_CREDENTIALS = "Identifiants invalides";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
-const VALIDATION_FAILED           = 'Validation échouée';
-const VALIDATION_INVALID_PARAM    = (paramName) => `Paramètre invalide : ${paramName}`;
+const VALIDATION_FAILED = "Validation échouée";
+const VALIDATION_INVALID_PARAM = (paramName) =>
+  `Paramètre invalide : ${paramName}`;
 
 // ─── Parking ──────────────────────────────────────────────────────────────────
-const PARKING_NOT_FOUND           = 'Parking introuvable';
-const PARKING_NAME_CITY_REQUIRED  = 'Nom et ville requis';
+const PARKING_NOT_FOUND = "Parking introuvable";
+const PARKING_NAME_CITY_REQUIRED = "Nom et ville requis";
+const PARKING_FULL = "Parking complet pour ces dates";
 
 // ─── Reservation ──────────────────────────────────────────────────────────────
-const RESERVATION_NOT_FOUND       = 'Réservation introuvable';
-const RESERVATION_INVALID_DATES   = 'La date de check-in doit être avant la date de check-out';
-const RESERVATION_MISSING_FIELDS  = (fields) => `Champs manquants : ${fields}`;
+const RESERVATION_NOT_FOUND = "Réservation introuvable";
+const RESERVATION_INVALID_DATES =
+  "La date de check-in doit être avant la date de check-out";
+const RESERVATION_MISSING_FIELDS = (fields) => `Champs manquants : ${fields}`;
 
 // ─── Générique ────────────────────────────────────────────────────────────────
-const NO_FIELD_TO_UPDATE          = 'Aucun champ à modifier';
-const SERVER_ERROR                = 'Erreur serveur';
+const NO_FIELD_TO_UPDATE = "Aucun champ à modifier";
+const SERVER_ERROR = "Erreur serveur";
 
-const AUTH_REFRESH_TOKEN_MISSING  = 'Refresh token manquant';
-const AUTH_REFRESH_TOKEN_INVALID  = 'Refresh token invalide ou expiré';
-const AUTH_REFRESH_TOKEN_REVOKED  = 'Refresh token révoqué';
-const TIMEOUT_ERROR               = 'Request timeout';
+const AUTH_REFRESH_TOKEN_MISSING = "Refresh token manquant";
+const AUTH_REFRESH_TOKEN_INVALID = "Refresh token invalide ou expiré";
+const AUTH_REFRESH_TOKEN_REVOKED = "Refresh token révoqué";
+const TIMEOUT_ERROR = "Request timeout";
 
 module.exports = {
   AUTH_TOKEN_MISSING,
@@ -41,6 +45,7 @@ module.exports = {
   VALIDATION_FAILED,
   VALIDATION_INVALID_PARAM,
   PARKING_NOT_FOUND,
+  PARKING_FULL,
   AUTH_REFRESH_TOKEN_INVALID,
   AUTH_REFRESH_TOKEN_MISSING,
   AUTH_REFRESH_TOKEN_REVOKED,

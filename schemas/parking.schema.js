@@ -3,6 +3,7 @@ const { z } = require('zod');
 const parkingSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   city: z.string().min(1, "La ville est requise"),
+   capacity: z.number().int().min(1, "La capacité doit être d'au moins 1 place"),
 });
 
 

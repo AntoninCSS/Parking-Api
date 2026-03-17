@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3446;
 
 
 // app.js
-const { timeoutMiddleware } = './middlewares/timeout.js';
+const { timeoutMiddleware } = require('./middleware/timeout.js');
 
 app.use(timeoutMiddleware(30_000)); 
 

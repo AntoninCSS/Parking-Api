@@ -1,6 +1,6 @@
 
 const { TIMEOUT_ERROR } = require("../constants/errors");
-const { log } = require("../utils/logger");
+const { log } = require("../config/logger");
 
 
 const timeoutMiddleware = (delay = 30_000) =>(req, res, next) => {
