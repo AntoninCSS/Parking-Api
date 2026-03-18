@@ -143,7 +143,7 @@ exports.checkAvailability = async (parkingId, checkin, checkout) => {
       parking_id: parseInt(parkingId),
       AND: [
         { checkin:  { lt: new Date(checkout) } },
-        { checkout: { gt: new Date(checkin) } },
+        { checkout: { gte: new Date(checkin) } },
       ],
     },
   });
