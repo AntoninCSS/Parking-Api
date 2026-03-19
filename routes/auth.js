@@ -77,7 +77,7 @@ router.post("/register", validate(registerSchema), authController.register);
  * /auth/login:
  *   post:
  *     summary: "Se connecter"
- *     description: "Vérifie les identifiants et retourne un token JWT valable 2h"
+ *     description: "Vérifie les identifiants, retourne un access token JWT (15min) et pose un cookie httpOnly contenant le refresh token (7 jours)"
  *     tags:
  *       - Auth
  *     requestBody:
@@ -134,6 +134,68 @@ router.post("/register", validate(registerSchema), authController.register);
  */
 router.post("/login", validate(loginSchema),authController.login);
 
-router.post('/refresh', authController.refresh); 
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: "Renouveler l'access token"
+ *     description: "Utilise le refresh token (cookie httpOnly) pour générer un nouvel access token valable 15 minutes. Le cookie est positionné automatiquement lors du login."
+ *     tags:
+ *       - Auth
+ *     responses:
+ *       200:
+ *         description: "Nouvel access token retourné"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *       401:
+ *         description: "Refresh token manquant ou invalide"
+ *         content:
+ *           application/json:
+ *             examples:
+ *               Manquant:
+ *                 value:
+ *                   message: "Refresh token manquant"
+ *               Invalide:
+ *                 value:
+ *                   message: "Refresh token invalide ou expiré"
+ *               Révoqué:
+ *                 value:
+ *                   message: "Refresh token révoqué"
+ *       500:
+ *         description: "Erreur serveur"
+ */
+router.post('/refresh', authController.refresh);
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: "Se déconnecter"
+ *     description: "Révoque le refresh token en base et supprime le cookie. L'access token côté client doit être supprimé manuellement."
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: "Déconnexion réussie"
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Déconnecté"
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
+ *       500:
+ *         description: "Erreur serveur"
+ */
+router.post('/logout', authController.logout);
 
 module.exports = router;

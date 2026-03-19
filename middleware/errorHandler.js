@@ -22,6 +22,7 @@ const errorHandler = async (error, req, res, next) => {
   });
   res.status(statusCode).json({
     message: error.message || SERVER_ERROR,
+    ...(error.details && { details: error.details }),
   });
 };
 

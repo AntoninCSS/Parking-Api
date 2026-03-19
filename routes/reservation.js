@@ -335,5 +335,36 @@ router.patch("/:reservationId",authenticate,validate(reservationPartialSchema), 
  *         description: "Erreur serveur"
  */
 router.delete("/:reservationId", authenticate,requireRole('admin'),reservationController.deleteReservation);
+/**
+ * @swagger
+ * /parkings/{parkingId}/reservations/{reservationId}/ticket:
+ *   get:
+ *     summary: "Télécharger le ticket de réservation"
+ *     description: "Génère et retourne un ticket PDF avec QR code sécurisé"
+ *     tags:
+ *       - Reservations
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/parkingId'
+ *       - $ref: '#/components/parameters/reservationId'
+ *     responses:
+ *       200:
+ *         description: "Ticket PDF généré"
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: "Token manquant"
+ *       403:
+ *         description: "Token invalide ou expiré"
+ *       404:
+ *         description: "Réservation introuvable"
+ *       500:
+ *         description: "Erreur serveur"
+ */
+router.get('/:reservationId/ticket', authenticate, reservationController.getTicket);
 
 module.exports = router;

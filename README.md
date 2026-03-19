@@ -16,6 +16,7 @@ API REST de gestion de parkings et réservations, construite avec Node.js, Expre
 | **Validation** | Zod |
 | **Sécurité** | Helmet, CORS, Rate Limiting, XSS sanitization, HPP |
 | **Logs** | Winston + Morgan |
+| **PDF / QR Code** | PDFKit + qrcode |
 | **Documentation** | Swagger (swagger-jsdoc + swagger-ui-express) |
 | **Tests** | Jest + Supertest |
 | **Linting** | ESLint |
@@ -105,7 +106,7 @@ Parking-Api/
 ├── controllers/
 │   ├── authController.js         # Register / Login
 │   ├── parkingController.js      # CRUD Parkings
-│   └── reservationController.js  # CRUD Réservations
+│   └── reservationController.js  # CRUD Réservations + Ticket
 ├── middleware/
 │   ├── errorHandler.js           # Gestion centralisée des erreurs
 │   ├── authMiddleware.js         # Vérification token JWT
@@ -120,7 +121,8 @@ Parking-Api/
 ├── services/
 │   ├── authService.js            # Logique métier authentification
 │   ├── parkingService.js         # Logique métier parkings
-│   └── reservationService.js     # Logique métier réservations
+│   ├── reservationService.js     # Logique métier réservations
+│   └── ticketService.js          # Génération PDF + QR Code
 ├── __tests__/
 │   ├── integration/              # Tests d'intégration (Supertest)
 │   └── unit/                     # Tests unitaires (Jest)
@@ -141,7 +143,9 @@ Parking-Api/
 | Méthode | Route | Description | Auth |
 |---|---|---|---|
 | POST | `/auth/register` | Créer un compte | ❌ |
-| POST | `/auth/login` | Se connecter | ❌ |
+| POST | `/auth/login` | Se connecter (access token 15min + cookie refresh 7j) | ❌ |
+| POST | `/auth/refresh` | Renouveler l'access token via cookie | ❌ |
+| POST | `/auth/logout` | Se déconnecter (révoque le refresh token) | ✅ |
 
 ### Parkings
 
@@ -164,6 +168,7 @@ Parking-Api/
 | PUT | `/parkings/:parkingId/reservations/:id` | Modifier une réservation | ✅ |
 | PATCH | `/parkings/:parkingId/reservations/:id` | Modification partielle | ✅ |
 | DELETE | `/parkings/:parkingId/reservations/:id` | Supprimer une réservation | ✅ Admin |
+| GET | `/parkings/:parkingId/reservations/:id/ticket` | Télécharger le ticket PDF | ✅ |
 
 ---
 

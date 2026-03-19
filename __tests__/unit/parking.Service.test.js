@@ -237,7 +237,7 @@ describe('checkAvailability', () => {
           parking_id: 1,
           AND: expect.arrayContaining([
             expect.objectContaining({ checkin:  { lt: new Date(checkout) } }),
-            expect.objectContaining({ checkout: { gt: new Date(checkin) } }),
+            expect.objectContaining({ checkout: { gte: new Date(checkin) } }),
           ]),
         }),
       })

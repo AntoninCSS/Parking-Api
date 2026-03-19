@@ -1,4 +1,5 @@
 const reservationService = require('../services/reservationService');
+const { generateTicket } = require('../services/ticketService');
 
 exports.getAllreservation = async (req, res, next) => {
   try {
@@ -57,6 +58,15 @@ exports.updatePartialReservation = async (req, res, next) => {
     const reservationId = parseInt(req.params.reservationId);
     const result = await reservationService.updatePartialReservation(parkingId, reservationId, req.body, req.user?.userId);
     res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getTicket = async (req, res, next) => {
+  try {
+    const { parkingId, reservationId } = req.params;
+    await generateTicket(parkingId, reservationId, res);
   } catch (error) {
     next(error);
   }

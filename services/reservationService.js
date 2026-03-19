@@ -109,8 +109,19 @@ exports.createReservation = async (parkingId, body, userId) => {
 
   if (!availability.isAvailable) {
     const error = new Error("Parking complet pour ces dates");
-    await log('warn', LOG_PARKING_FULL.action, LOG_PARKING_FULL.message, userId, { parkingId, checkin, checkout });
+    await log(
+      "warn",
+      LOG_PARKING_FULL.action,
+      LOG_PARKING_FULL.message,
+      userId,
+      { parkingId, checkin, checkout },
+    );
     error.statusCode = 409;
+    error.details = {
+      capacity: availability.capacity,
+      occupiedSpots: availability.occupiedSpots,
+      availableSpots: availability.availableSpots,
+    };
     throw error;
   }
 
